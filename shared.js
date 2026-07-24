@@ -1,6 +1,6 @@
 // ---- Config ----
 // Set this to your Cloudflare Worker URL after you deploy the proxy (see DEPLOY.md).
-const API_PROXY_URL = "https://CHANGE-ME.workers.dev/v1/messages";
+const API_PROXY_URL = "https://english-study-proxy.nimbosjung.workers.dev/v1/messages";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
 
