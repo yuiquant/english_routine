@@ -513,12 +513,16 @@ function ReviewView({ items, persist }) {
     setCurrent(item); setExampleIdx(idx); setQueue(rest);
     setStage("prompt"); setTranscript(""); setFeedback(null); setError(""); setLeechPrompt(false);
   }
+  const [overflowCount, setOverflowCount] = useState(0);
   function startSession() {
     const due = items.filter(isDueToday);
     setReviewedCount(0);
-    if (due.length === 0) { setQueue([]); setCurrent(null); return; }
-    const shuffled = [...due].sort(() => Math.random()-0.5).map(i=>i.id);
-    pickFromUpdated(shuffled, items);
+    if (due.length === 0) { setQueue([]); setCurrent(null); setOverflowCount(0); return; }
+    // Most overdue first (oldest dueDate), so the cap never starves the most urgent items.
+    const sorted = [...due].sort((a, b) => a.srs.dueDate.localeCompare(b.srs.dueDate));
+    const capped = sorted.slice(0, DAILY_REVIEW_CAP);
+    setOverflowCount(Math.max(0, sorted.length - capped.length));
+    pickFromUpdated(capped.map(i => i.id), items);
   }
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -577,7 +581,7 @@ function ReviewView({ items, persist }) {
       <div>
         <div className="eyebrow">Review</div>
         <h2>Today's review</h2>
-        <p className="sub">Due today: {dueCount}</p>
+        <p className="sub">Due today: {dueCount}{dueCount > DAILY_REVIEW_CAP ? ` (session capped at ${DAILY_REVIEW_CAP} — most overdue first, the rest waits for tomorrow)` : ""}</p>
         {dueCount === 0 ? <div className="empty">Nothing due today.</div> : <button className="btn primary" onClick={startSession}>🎙 Start reviewing</button>}
       </div>
     );
@@ -599,7 +603,7 @@ function ReviewView({ items, persist }) {
       <div>
         <div className="eyebrow">Session done</div>
         <h2>That's a wrap!</h2>
-        <p className="sub">Reviewed {reviewedCount} this session.</p>
+        <p className="sub">Reviewed {reviewedCount} this session.{overflowCount > 0 ? ` ${overflowCount} more were due but rolled over to tomorrow (capped at ${DAILY_REVIEW_CAP}/session).` : ""}</p>
         <button className="btn primary" onClick={() => setQueue(null)}>Back to overview</button>
       </div>
     );
