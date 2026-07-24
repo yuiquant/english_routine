@@ -39,7 +39,7 @@
     <button class="btn ghost" id="againBtn" style="display:none">↻ Record again</button>
   </div>
   <div id="error" class="error-box" style="text-align:center"></div>
-  <video id="playback" controls style="display:none"></video>
+  <video id="playback" controls playsinline style="display:none"></video>
 </div>
 
 <script src="shared.js"></script>
@@ -75,10 +75,11 @@
     if (!stream) { errorEl.textContent = "Camera isn't ready yet."; return; }
     errorEl.textContent = "";
     chunks = [];
-    mediaRecorder = new MediaRecorder(stream);
+    const mimeType = pickMediaMimeType("video");
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
     mediaRecorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' });
+      const blob = new Blob(chunks, { type: mimeType || "video/webm" });
       playback.src = URL.createObjectURL(blob);
       playback.style.display = 'block';
       live.style.display = 'none';
