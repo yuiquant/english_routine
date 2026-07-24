@@ -85,6 +85,9 @@
         <span id="recStatus" style="font-size:12px;color:var(--muted); margin-left:8px;"></span>
         <div id="recError" class="error-box"></div>
         <video id="recPlayback" controls playsinline style="display:none"></video>
+        <div id="recDownloadWrap" style="display:none; margin-top:8px;">
+          <a id="recDownloadLink" class="btn ghost" download="shadowing-recording.webm">⬇ Download recording (open in Photos/QuickTime if it won't play here)</a>
+        </div>
       </div>
     </div>
     <div class="script-col">
@@ -221,6 +224,11 @@
   const recError = document.getElementById('recError');
   const recLive = document.getElementById('recLive');
   const recPlayback = document.getElementById('recPlayback');
+  recPlayback.addEventListener('error', () => {
+    const code = recPlayback.error && recPlayback.error.code;
+    const reason = { 1: "loading was aborted", 2: "a network error", 3: "the video couldn't be decoded (format issue)", 4: "this format isn't supported by this browser" }[code] || "an unknown issue";
+    recError.textContent = `This browser couldn't play the recording back here (${reason}) — try the download link below to open it in another app.`;
+  });
 
   recBtn.onclick = async function () {
     recError.textContent = "";
@@ -235,9 +243,16 @@
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
-        recPlayback.src = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
+        recPlayback.src = blobUrl;
+        recPlayback.load();
         recPlayback.style.display = 'block';
         recLive.style.display = 'none';
+        const dlLink = document.getElementById('recDownloadLink');
+        const ext = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+        dlLink.href = blobUrl;
+        dlLink.download = `shadowing-recording.${ext}`;
+        document.getElementById('recDownloadWrap').style.display = 'block';
         stream.getTracks().forEach(t => t.stop());
         markActivity("shadowing");
       };
