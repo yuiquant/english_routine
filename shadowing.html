@@ -14,10 +14,13 @@
   #player { width: 100%; height: 100%; }
   .controls-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
   .controls-row select, .controls-row input[type=number] { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; background: var(--card); width: auto; }
-  .script-box { height: 400px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
-  video#playback { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; }
+  .time-chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; min-width: 52px; text-align: center; }
+  .script-box { height: 340px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  video#recPlayback, video#recLive { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; }
   .rec-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background: var(--brick); margin-right:6px; animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .library-row { display:flex; gap:8px; align-items:center; margin-top: 12px; flex-wrap: wrap; }
+  .library-row select { flex: 1 1 200px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: var(--card); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -36,11 +39,20 @@
 <div class="wrap">
   <div class="eyebrow">Shadowing</div>
   <h2>Watch, read, echo</h2>
-  <p class="sub">Paste a YouTube link and the script, then record yourself echoing it back. Nothing here is saved.</p>
+  <p class="sub">Paste a YouTube link and the script, then record yourself echoing it back. Recordings aren't saved — only the video link + script are, so you can reload the same material later.</p>
+
+  <div class="library-row">
+    <select id="materialSelect"><option value="">— saved materials —</option></select>
+    <button class="btn ghost" id="loadMaterialBtn">Load</button>
+    <button class="btn ghost" id="deleteMaterialBtn">Delete</button>
+  </div>
 
   <label class="field-label">YouTube URL</label>
   <input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
-  <button class="btn primary" id="loadBtn">Load video</button>
+  <div style="display:flex; gap:8px; margin-top:8px;">
+    <button class="btn primary" id="loadBtn">Load video</button>
+    <button class="btn ghost" id="saveMaterialBtn">💾 Save this material</button>
+  </div>
   <div id="ytError" class="error-box"></div>
 
   <div class="layout">
@@ -53,21 +65,26 @@
           <option value="0.75">0.75x</option>
           <option value="1" selected>1x</option>
         </select>
-        <label style="font-size:12px;color:var(--muted)">Loop from</label>
-        <input type="number" id="loopStart" min="0" style="width:60px" placeholder="sec" />
-        <label style="font-size:12px;color:var(--muted)">to</label>
-        <input type="number" id="loopEnd" min="0" style="width:60px" placeholder="sec" />
+      </div>
+      <div class="controls-row">
+        <button class="btn ghost" id="setStartBtn">⏱ Set loop start here</button>
+        <span class="time-chip" id="startChip">--:--</span>
+        <button class="btn ghost" id="setEndBtn">⏱ Set loop end here</button>
+        <span class="time-chip" id="endChip">--:--</span>
+      </div>
+      <div class="controls-row">
         <button class="btn ghost" id="loopBtn">🔁 Loop segment</button>
         <button class="btn ghost" id="stopLoopBtn" style="display:none">Stop loop</button>
       </div>
 
       <div style="margin-top:20px;">
-        <div class="field-label" style="margin-top:0">Record yourself echoing</div>
-        <button class="btn primary" id="recBtn">🎙 Start recording</button>
+        <div class="field-label" style="margin-top:0">Record yourself echoing (video, not saved)</div>
+        <video id="recLive" autoplay muted playsinline style="display:none"></video>
+        <button class="btn primary" id="recBtn">🎥 Start recording</button>
         <button class="btn ghost" id="stopRecBtn" style="display:none">■ Stop</button>
         <span id="recStatus" style="font-size:12px;color:var(--muted); margin-left:8px;"></span>
         <div id="recError" class="error-box"></div>
-        <video id="playback" controls style="display:none"></video>
+        <video id="recPlayback" controls playsinline style="display:none"></video>
       </div>
     </div>
     <div class="script-col">
@@ -79,12 +96,63 @@
 
 <script src="shared.js"></script>
 <script>
-  // -- YouTube IFrame API --
+  // ---- Saved materials library (localStorage only, no API cost) ----
+  const LIBRARY_KEY = "shadowing-library";
+  function loadLibrary() {
+    try { return JSON.parse(localStorage.getItem(LIBRARY_KEY)) || []; } catch (e) { return []; }
+  }
+  function saveLibrary(list) { localStorage.setItem(LIBRARY_KEY, JSON.stringify(list)); }
+  function refreshMaterialSelect() {
+    const sel = document.getElementById('materialSelect');
+    const list = loadLibrary();
+    sel.innerHTML = '<option value="">— saved materials —</option>' +
+      list.map(m => `<option value="${m.id}">${m.title}</option>`).join('');
+  }
+  refreshMaterialSelect();
+
+  document.getElementById('saveMaterialBtn').onclick = function () {
+    const url = document.getElementById('ytUrl').value.trim();
+    const script = document.getElementById('scriptBox').value.trim();
+    if (!url && !script) { setYtError("Nothing to save yet — add a URL or script first."); return; }
+    const defaultTitle = url.slice(0, 40) || script.slice(0, 40) || "Untitled";
+    const title = prompt("Name this material:", defaultTitle);
+    if (!title) return;
+    const list = loadLibrary();
+    list.unshift({ id: uid(), title, url, script });
+    saveLibrary(list);
+    refreshMaterialSelect();
+    setYtError("");
+  };
+  document.getElementById('loadMaterialBtn').onclick = function () {
+    const id = document.getElementById('materialSelect').value;
+    if (!id) return;
+    const item = loadLibrary().find(m => m.id === id);
+    if (!item) return;
+    document.getElementById('ytUrl').value = item.url;
+    document.getElementById('scriptBox').value = item.script;
+    document.getElementById('loadBtn').click();
+  };
+  document.getElementById('deleteMaterialBtn').onclick = function () {
+    const id = document.getElementById('materialSelect').value;
+    if (!id) return;
+    if (!confirm("Delete this saved material?")) return;
+    saveLibrary(loadLibrary().filter(m => m.id !== id));
+    refreshMaterialSelect();
+  };
+
+  // ---- YouTube IFrame API ----
   let player;
   let loopInterval = null;
+  let loopStartSec = null, loopEndSec = null;
   function extractVideoId(url) {
     const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
     return m ? m[1] : null;
+  }
+  function formatMMSS(totalSeconds) {
+    const s = Math.floor(totalSeconds);
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
   }
   const tag = document.createElement('script');
   tag.src = "https://www.youtube.com/iframe_api";
@@ -111,17 +179,29 @@
     if (player && player.setPlaybackRate) player.setPlaybackRate(parseFloat(e.target.value));
   };
 
+  document.getElementById('setStartBtn').onclick = function () {
+    if (!player || !player.getCurrentTime) return;
+    loopStartSec = player.getCurrentTime();
+    document.getElementById('startChip').textContent = formatMMSS(loopStartSec);
+  };
+  document.getElementById('setEndBtn').onclick = function () {
+    if (!player || !player.getCurrentTime) return;
+    loopEndSec = player.getCurrentTime();
+    document.getElementById('endChip').textContent = formatMMSS(loopEndSec);
+  };
+
   document.getElementById('loopBtn').onclick = function () {
-    const start = parseFloat(document.getElementById('loopStart').value);
-    const end = parseFloat(document.getElementById('loopEnd').value);
-    if (isNaN(start) || isNaN(end) || end <= start) { setYtError("Enter a valid start/end (in seconds) for the loop."); return; }
+    if (loopStartSec === null || loopEndSec === null || loopEndSec <= loopStartSec) {
+      setYtError("Play to a start point and click 'Set loop start', then do the same for the end.");
+      return;
+    }
     setYtError("");
     if (!player || !player.seekTo) return;
-    player.seekTo(start, true);
+    player.seekTo(loopStartSec, true);
     player.playVideo();
     if (loopInterval) clearInterval(loopInterval);
     loopInterval = setInterval(() => {
-      if (player.getCurrentTime && player.getCurrentTime() >= end) player.seekTo(start, true);
+      if (player.getCurrentTime && player.getCurrentTime() >= loopEndSec) player.seekTo(loopStartSec, true);
     }, 300);
     document.getElementById('loopBtn').style.display = 'none';
     document.getElementById('stopLoopBtn').style.display = 'inline-flex';
@@ -133,25 +213,31 @@
     document.getElementById('stopLoopBtn').style.display = 'none';
   };
 
-  // -- Recording (in-memory only, never saved) --
+  // ---- Recording (video, in-memory only, never saved) ----
   let mediaRecorder, chunks = [], stream;
   const recBtn = document.getElementById('recBtn');
   const stopRecBtn = document.getElementById('stopRecBtn');
   const recStatus = document.getElementById('recStatus');
   const recError = document.getElementById('recError');
-  const playback = document.getElementById('playback');
+  const recLive = document.getElementById('recLive');
+  const recPlayback = document.getElementById('recPlayback');
 
   recBtn.onclick = async function () {
     recError.textContent = "";
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      recLive.srcObject = stream;
+      recLive.style.display = 'block';
+      recPlayback.style.display = 'none';
       chunks = [];
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = pickMediaMimeType("video");
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        playback.src = URL.createObjectURL(blob);
-        playback.style.display = 'block';
+        const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+        recPlayback.src = URL.createObjectURL(blob);
+        recPlayback.style.display = 'block';
+        recLive.style.display = 'none';
         stream.getTracks().forEach(t => t.stop());
         markActivity("shadowing");
       };
@@ -160,7 +246,7 @@
       stopRecBtn.style.display = 'inline-flex';
       recStatus.innerHTML = '<span class="rec-dot"></span>Recording...';
     } catch (e) {
-      recError.textContent = "Couldn't access the microphone — check your browser's site permissions.";
+      recError.textContent = "Couldn't access the camera/mic — check your browser's site permissions.";
     }
   };
   stopRecBtn.onclick = function () {
