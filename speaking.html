@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>English Study — Speaking Practice</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  video { width: 100%; max-width: 480px; border-radius: 8px; background: #000; display: block; margin: 16px auto 0; }
+  .timer { font-family: 'JetBrains Mono', monospace; font-size: 28px; text-align: center; margin-top: 14px; color: var(--teal-dark); }
+  .controls { text-align: center; margin-top: 14px; }
+  .rec-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background: var(--brick); margin-right:6px; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">English Study</div>
+    <div class="tabs">
+      <a href="index.html">Home</a>
+      <a href="notes.html">Notes</a>
+      <a href="shadowing.html">Shadowing</a>
+      <a href="speaking.html" class="active">Speaking</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Speaking Practice</div>
+  <h2>Free talk, 1-2 minutes</h2>
+  <p class="sub">Just talk — about anything. Record it, then watch yourself back. Nothing is saved anywhere.</p>
+
+  <video id="live" autoplay muted playsinline></video>
+  <div class="timer" id="timer">00:00</div>
+  <div class="controls">
+    <button class="btn primary" id="startBtn">🎥 Start recording</button>
+    <button class="btn ghost" id="stopBtn" style="display:none">■ Stop</button>
+    <button class="btn ghost" id="againBtn" style="display:none">↻ Record again</button>
+  </div>
+  <div id="error" class="error-box" style="text-align:center"></div>
+  <video id="playback" controls style="display:none"></video>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  const live = document.getElementById('live');
+  const playback = document.getElementById('playback');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const againBtn = document.getElementById('againBtn');
+  const timerEl = document.getElementById('timer');
+  const errorEl = document.getElementById('error');
+
+  let stream, mediaRecorder, chunks = [];
+  let timerInterval, seconds = 0;
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  }
+
+  async function initCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      live.srcObject = stream;
+    } catch (e) {
+      errorEl.textContent = "Couldn't access the camera/mic — check your browser's site permissions.";
+    }
+  }
+  initCamera();
+
+  startBtn.onclick = function () {
+    if (!stream) { errorEl.textContent = "Camera isn't ready yet."; return; }
+    errorEl.textContent = "";
+    chunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      playback.src = URL.createObjectURL(blob);
+      playback.style.display = 'block';
+      live.style.display = 'none';
+      markActivity("speaking");
+    };
+    mediaRecorder.start();
+    seconds = 0;
+    timerEl.textContent = formatTime(0);
+    timerInterval = setInterval(() => { seconds++; timerEl.textContent = formatTime(seconds); }, 1000);
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-flex';
+    playback.style.display = 'none';
+    live.style.display = 'block';
+  };
+
+  stopBtn.onclick = function () {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    clearInterval(timerInterval);
+    stopBtn.style.display = 'none';
+    againBtn.style.display = 'inline-flex';
+  };
+
+  againBtn.onclick = function () {
+    playback.style.display = 'none';
+    live.style.display = 'block';
+    timerEl.textContent = "00:00";
+    againBtn.style.display = 'none';
+    startBtn.style.display = 'inline-flex';
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>English Study — Home</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .streak { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--brick); margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">English Study</div>
+    <div class="tabs">
+      <a href="index.html" class="active">Home</a>
+      <a href="notes.html">Notes</a>
+      <a href="shadowing.html">Shadowing</a>
+      <a href="speaking.html">Speaking</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Today</div>
+  <h2>What's left today</h2>
+  <p class="sub">Three small things. Doesn't have to be long — just touch each one.</p>
+  <div id="streak" class="streak"></div>
+  <div id="items"></div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  const activity = getActivityToday();
+
+  const items = [
+    { key: "notes", title: "Notes", desc: "Collect a new expression, or clear a review", href: "notes.html" },
+    { key: "shadowing", title: "Shadowing", desc: "Play a video and echo the lines back", href: "shadowing.html" },
+    { key: "speaking", title: "Speaking practice", desc: "1-2 min free talking, record & play back", href: "speaking.html" },
+  ];
+
+  const container = document.getElementById("items");
+  items.forEach((it) => {
+    const done = !!activity[it.key];
+    const a = document.createElement("a");
+    a.href = it.href;
+    a.className = "action-item" + (done ? " done" : "");
+    a.innerHTML = `
+      <div class="left">
+        <div class="status-dot"></div>
+        <div>
+          <div class="title">${it.title}${done ? " · done today" : ""}</div>
+          <div class="desc">${it.desc}</div>
+        </div>
+      </div>
+      <div class="chevron">→</div>
+    `;
+    container.appendChild(a);
+  });
+
+  // Simple streak: consecutive days where all three were touched at least once.
+  // (Stored separately so it survives even if today isn't finished yet.)
+  const STREAK_KEY = "pfn-streak";
+  function loadStreak() {
+    try {
+      return JSON.parse(localStorage.getItem(STREAK_KEY)) || { lastFullDate: null, streak: 0 };
+    } catch (e) {
+      return { lastFullDate: null, streak: 0 };
+    }
+  }
+  function maybeUpdateStreak() {
+    const allDoneToday = activity.notes && activity.shadowing && activity.speaking;
+    if (!allDoneToday) return loadStreak();
+    const s = loadStreak();
+    if (s.lastFullDate === todayStr()) return s;
+    let streak = 1;
+    if (s.lastFullDate === addDays(todayStr(), -1)) streak = (s.streak || 0) + 1;
+    const next = { lastFullDate: todayStr(), streak };
+    localStorage.setItem(STREAK_KEY, JSON.stringify(next));
+    return next;
+  }
+  const streakState = maybeUpdateStreak();
+  document.getElementById("streak").textContent = streakState.streak > 0
+    ? `🔥 ${streakState.streak}-day streak (all three done)`
+    : "No active streak yet — do all three today to start one";
+</script>
+</body>
+</html>

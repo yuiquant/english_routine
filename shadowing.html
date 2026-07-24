@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>English Study — Shadowing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .wrap { max-width: 900px; }
+  .layout { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; }
+  .video-col { flex: 1 1 360px; min-width: 300px; }
+  .script-col { flex: 1 1 320px; min-width: 280px; }
+  #player-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; }
+  #player { width: 100%; height: 100%; }
+  .controls-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .controls-row select, .controls-row input[type=number] { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 12px; background: var(--card); width: auto; }
+  .script-box { height: 400px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.7; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  video#playback { width: 100%; border-radius: 8px; margin-top: 10px; background: #000; }
+  .rec-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background: var(--brick); margin-right:6px; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">English Study</div>
+    <div class="tabs">
+      <a href="index.html">Home</a>
+      <a href="notes.html">Notes</a>
+      <a href="shadowing.html" class="active">Shadowing</a>
+      <a href="speaking.html">Speaking</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Shadowing</div>
+  <h2>Watch, read, echo</h2>
+  <p class="sub">Paste a YouTube link and the script, then record yourself echoing it back. Nothing here is saved.</p>
+
+  <label class="field-label">YouTube URL</label>
+  <input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
+  <button class="btn primary" id="loadBtn">Load video</button>
+  <div id="ytError" class="error-box"></div>
+
+  <div class="layout">
+    <div class="video-col">
+      <div id="player-wrap"><div id="player"></div></div>
+      <div class="controls-row">
+        <label style="font-size:12px;color:var(--muted)">Speed</label>
+        <select id="speedSelect">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1x</option>
+        </select>
+        <label style="font-size:12px;color:var(--muted)">Loop from</label>
+        <input type="number" id="loopStart" min="0" style="width:60px" placeholder="sec" />
+        <label style="font-size:12px;color:var(--muted)">to</label>
+        <input type="number" id="loopEnd" min="0" style="width:60px" placeholder="sec" />
+        <button class="btn ghost" id="loopBtn">🔁 Loop segment</button>
+        <button class="btn ghost" id="stopLoopBtn" style="display:none">Stop loop</button>
+      </div>
+
+      <div style="margin-top:20px;">
+        <div class="field-label" style="margin-top:0">Record yourself echoing</div>
+        <button class="btn primary" id="recBtn">🎙 Start recording</button>
+        <button class="btn ghost" id="stopRecBtn" style="display:none">■ Stop</button>
+        <span id="recStatus" style="font-size:12px;color:var(--muted); margin-left:8px;"></span>
+        <div id="recError" class="error-box"></div>
+        <video id="playback" controls style="display:none"></video>
+      </div>
+    </div>
+    <div class="script-col">
+      <label class="field-label">Script (paste the transcript)</label>
+      <textarea id="scriptBox" class="script-box" placeholder="Paste the video's script/subtitles here..."></textarea>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  // -- YouTube IFrame API --
+  let player;
+  let loopInterval = null;
+  function extractVideoId(url) {
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', {
+      height: '100%', width: '100%',
+      events: { onError: () => setYtError("Couldn't load that video — check the URL or try another.") }
+    });
+  };
+  function setYtError(msg) { document.getElementById('ytError').textContent = msg; }
+
+  document.getElementById('loadBtn').onclick = function () {
+    setYtError("");
+    const url = document.getElementById('ytUrl').value.trim();
+    const id = extractVideoId(url);
+    if (!id) { setYtError("That doesn't look like a valid YouTube URL."); return; }
+    if (!player || !player.loadVideoById) { setYtError("Player isn't ready yet — try again in a second."); return; }
+    player.loadVideoById(id);
+    markActivity("shadowing");
+  };
+
+  document.getElementById('speedSelect').onchange = function (e) {
+    if (player && player.setPlaybackRate) player.setPlaybackRate(parseFloat(e.target.value));
+  };
+
+  document.getElementById('loopBtn').onclick = function () {
+    const start = parseFloat(document.getElementById('loopStart').value);
+    const end = parseFloat(document.getElementById('loopEnd').value);
+    if (isNaN(start) || isNaN(end) || end <= start) { setYtError("Enter a valid start/end (in seconds) for the loop."); return; }
+    setYtError("");
+    if (!player || !player.seekTo) return;
+    player.seekTo(start, true);
+    player.playVideo();
+    if (loopInterval) clearInterval(loopInterval);
+    loopInterval = setInterval(() => {
+      if (player.getCurrentTime && player.getCurrentTime() >= end) player.seekTo(start, true);
+    }, 300);
+    document.getElementById('loopBtn').style.display = 'none';
+    document.getElementById('stopLoopBtn').style.display = 'inline-flex';
+  };
+  document.getElementById('stopLoopBtn').onclick = function () {
+    if (loopInterval) clearInterval(loopInterval);
+    loopInterval = null;
+    document.getElementById('loopBtn').style.display = 'inline-flex';
+    document.getElementById('stopLoopBtn').style.display = 'none';
+  };
+
+  // -- Recording (in-memory only, never saved) --
+  let mediaRecorder, chunks = [], stream;
+  const recBtn = document.getElementById('recBtn');
+  const stopRecBtn = document.getElementById('stopRecBtn');
+  const recStatus = document.getElementById('recStatus');
+  const recError = document.getElementById('recError');
+  const playback = document.getElementById('playback');
+
+  recBtn.onclick = async function () {
+    recError.textContent = "";
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      chunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        playback.src = URL.createObjectURL(blob);
+        playback.style.display = 'block';
+        stream.getTracks().forEach(t => t.stop());
+        markActivity("shadowing");
+      };
+      mediaRecorder.start();
+      recBtn.style.display = 'none';
+      stopRecBtn.style.display = 'inline-flex';
+      recStatus.innerHTML = '<span class="rec-dot"></span>Recording...';
+    } catch (e) {
+      recError.textContent = "Couldn't access the microphone — check your browser's site permissions.";
+    }
+  };
+  stopRecBtn.onclick = function () {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    recBtn.style.display = 'inline-flex';
+    stopRecBtn.style.display = 'none';
+    recStatus.textContent = "";
+  };
+</script>
+</body>
+</html>

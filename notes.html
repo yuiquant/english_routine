@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>English Study — Notes</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  .app-inner { max-width: 640px; margin: 0 auto; }
+  .inner-tabs { display:flex; gap: 4px; margin: 16px 0 10px; border-bottom: 1px solid var(--line); }
+  .inner-tabs button { background: none; border: none; padding: 8px 12px; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .inner-tabs button.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+  .mode-toggle { display:flex; gap: 6px; margin: 4px 0 12px; }
+  .mode-btn { border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; }
+  .mode-btn.active { background: var(--teal-dark); border-color: var(--teal-dark); color: #fff; }
+  .expr { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--teal-dark); }
+  .meaning { font-size: 14px; margin-top: 4px; }
+  .nuance { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .youglish { display:inline-flex; gap:4px; font-size: 11.5px; color: var(--teal-dark); text-decoration: none; margin-top: 4px; }
+  .examples { margin-top: 12px; display:flex; flex-direction: column; gap: 10px; }
+  .example { border-left: 2px solid var(--line); padding-left: 10px; }
+  .badge { display:inline-flex; align-items:center; gap:4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--teal-dark); background: rgba(31,111,107,0.08); border-radius: 4px; padding: 2px 6px; }
+  .scenario { font-size: 13px; margin-top: 4px; }
+  .intent-hint { font-size: 12px; color: var(--amber); margin-top: 3px; font-style: italic; }
+  .target { font-size: 14px; font-weight: 600; margin-top: 3px; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .reveal-btn { display:inline-flex; align-items:center; gap:6px; margin-top: 6px; background: transparent; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 6px; }
+  .reveal-btn:hover { border-color: var(--teal); color: var(--teal-dark); }
+  .card-list { column-width: 190px; column-gap: 10px; }
+  .compact-card { break-inside: avoid; margin: 0 0 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .collapsed-btn { display:block; width:100%; text-align:left; background:none; border:none; padding: 10px 12px; }
+  .collapsed-btn:hover { background: rgba(31,111,107,0.04); }
+  .meaning-line { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-row { display:flex; justify-content: space-between; align-items:center; }
+  .catalog { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+  .due-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .due-dot.due { background: var(--amber); }
+  .leech-tag { color: var(--brick); font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+  .grad-tag { color: var(--teal); font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+  .detail { padding: 0 12px 12px; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 10px; }
+  .scenario-box { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .speak-row { display:flex; gap: 10px; align-items: flex-start; margin-top: 14px; }
+  .mic-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--teal); background: var(--card); color: var(--teal-dark); font-size: 18px; }
+  .mic-btn.listening { background: var(--brick); border-color: var(--brick); color: #fff; }
+  .dictation-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .feedback-box { margin-top: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .rating-row { display:flex; gap: 8px; margin-top: 16px; }
+  .rating-btn { flex: 1; border: none; border-radius: 6px; padding: 10px 0; font-size: 13px; font-weight: 600; color: #fff; }
+  .rating-btn.again { background: var(--brick); }
+  .rating-btn.hard { background: var(--amber); }
+  .rating-btn.good { background: var(--teal); }
+  .rating-btn.easy { background: var(--teal-dark); }
+  .honest-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+  .leech-box { margin-top: 14px; background: rgba(176,80,63,0.08); border: 1px solid var(--brick); border-radius: 8px; padding: 14px; font-size: 13px; }
+  .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; color: var(--muted); margin-right:6px; }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">English Study</div>
+    <div class="tabs">
+      <a href="index.html">Home</a>
+      <a href="notes.html" class="active">Notes</a>
+      <a href="shadowing.html">Shadowing</a>
+      <a href="speaking.html">Speaking</a>
+    </div>
+  </div>
+</div>
+<div id="root" class="wrap"></div>
+
+<script src="shared.js"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const STORAGE_KEY = "expressions";
+
+const CONTEXT_POOL = [
+  "CrossFit", "Family (wife & 4yo)", "Nursing class / clinical", "ED volunteering",
+  "Cooking & groceries", "Korean church", "Coffee routine / small talk",
+  "Investing & quant trading", "Ex-corporate / expat colleagues", "Weekend survival shows",
+];
+const CONTEXT_EMOJI = {
+  "CrossFit": "🏋️", "Family (wife & 4yo)": "👪", "Nursing class / clinical": "🩺",
+  "ED volunteering": "🚑", "Cooking & groceries": "🍳", "Korean church": "⛪",
+  "Coffee routine / small talk": "☕", "Investing & quant trading": "📈",
+  "Ex-corporate / expat colleagues": "💼", "Weekend survival shows": "📺",
+};
+
+const LEARNER_PROFILE = `Learner profile: a Korean adult, 10 years in Korean finance then ~6 years at a foreign company
+(2 years working entirely in English with non-Korean colleagues). Upper-intermediate to advanced English
+(B2-C1) — not a beginner. The core problem isn't grammar or vocabulary breadth; it's mentally composing in
+Korean first and translating, causing hesitation and unnatural, overly literal phrasing. Full-time nursing
+student in New Zealand now.
+
+Keep idiomatic, native-sounding phrasing (phrasal verbs, light-verb collocations, natural discourse markers,
+conversational hedges/openers) rather than basic textbook vocabulary. But keep SENTENCE STRUCTURE simple and
+short — one clause, or at most one simple subordinate clause. Naturalness should come from word choice and
+rhythm, not syntactic complexity. Sound like an actual person talking — contractions, natural rhythm,
+occasional filler ("like", "honestly", "I mean") — not textbook English or an AI being tidy.
+
+Overarching goal: effortless, natural daily communication — not maximizing sophistication over time. Don't
+escalate toward rarer/more literary vocabulary just because the collection grows. Keep prioritizing what
+native speakers actually reach for in everyday family, work, and social life.
+
+Real contexts from this learner's life to draw scenarios from: CrossFit every morning; lives with wife and a
+4-year-old; full-time nursing degree in NZ; volunteers weekly in the ED ("Friends of the Emergency
+Department"); cooks often incl. baking, rarely eats out; attends a Korean church on weekends; drinks drip
+coffee daily; into investing/quant trading as a hobby since quitting work to study; years at a foreign company
+with non-Korean colleagues; enjoys brain-survival shows (Physical:100, The Genius) when he has time.`;
+
+const GEN_SYSTEM = `You are an English-speaking coach helping the learner below move from translating-in-their-head to
+producing natural, idiomatic English fluently.
+
+${LEARNER_PROFILE}
+
+The learner brings you an expression they noticed somewhere (or asks you to pick one) and wants to internalize.
+This can be a phrasal verb, light-verb collocation, idiom, OR a conversational chunk/sentence frame (hedges,
+opinion softeners, openers, discourse connectors) — treat these as equally valid, not a lesser category.
+
+Output ONLY valid JSON, no markdown fences, no commentary:
+{
+  "text": "the cleaned-up target expression",
+  "meaning_en": "a one-line plain-English definition",
+  "register": "formal | neutral | casual",
+  "nuance_note": "1-2 sentences on when/why natives reach for this over a literal/textbook phrasing — name the
+    flat direct-translation version a Korean speaker might default to and contrast it, when useful",
+  "examples": [
+    {"context_label": "one of the learner's real-life contexts", "scenario_en": "sets up the moment — situational description OR a dialogue snippet, whichever feels natural. Do NOT include the target expression or answer here.", "intent_hint": "a short phrase naming the communicative FUNCTION/INTENT the learner should aim for in their own attempt — e.g. 'hint: you're describing a realization you landed on after a struggle' — enough to aim their guess at the right kind of thing WITHOUT giving away the wording or the expression itself", "target_en": "a natural, short line using the target expression, written the way a real person would say it out loud", "note_en": "a very short tip on tone/usage for this sentence"},
+    { ... }
+  ]
+}
+Produce however many examples earn their place — usually 2, sometimes 1, occasionally 3. Never pad to hit a
+count. Draw each from a DIFFERENT one of the learner's real contexts, only where this expression would
+plausibly come up. If the learner instead asks you to pick one for them (no expression/image given): choose
+ONE natural, high-frequency item not already in the list they've collected — rotate across phrasal
+verbs/light-verb collocations, conversational chunks/hedges, and everyday idioms rather than defaulting to one
+type; lean toward whichever category looks under-represented in their collection. Prioritize everyday native
+spoken-English value over rare/bookish items. Calibrate difficulty as a sensible next step, not trivially easy
+or wildly obscure.`;
+
+const FEEDBACK_SYSTEM = `You are a warm, casual native-English-speaking friend helping the learner below practice speaking out
+loud. Don't act like a formal grader — react like a friend, briefly and encouragingly, while being honest
+about what sounded natural or not.
+
+${LEARNER_PROFILE}
+
+You'll get: the target expression, the scenario, a reference sentence, and a transcript of what the learner
+actually said attempting it.
+
+Output ONLY valid JSON, no markdown:
+{
+  "used_target": true/false,
+  "naturalness": "very natural | natural | a bit off | quite unnatural",
+  "feedback_en": "1-3 casual sentences reacting like a friend — specific about what landed or sounded translated/awkward",
+  "better_version_en": "one improved sentence if clearly more natural exists, else empty string"
+}`;
+
+function ContextBadge({ label }) {
+  return <span className="badge">{CONTEXT_EMOJI[label] || "💬"} {label}</span>;
+}
+function YouglishLink({ text }) {
+  const url = `https://youglish.com/pronounce/${encodeURIComponent(text)}/english`;
+  return <a className="youglish" href={url} target="_blank" rel="noopener noreferrer">🔊 Hear it on YouGlish</a>;
+}
+function ExampleBlock({ example }) {
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <div className="example">
+      <ContextBadge label={example.context_label} />
+      <div className="scenario">{example.scenario_en}</div>
+      {example.intent_hint && <div className="intent-hint">{example.intent_hint}</div>}
+      {!revealed ? (
+        <button className="reveal-btn" onClick={() => setRevealed(true)}>👁 Think of your own line first, then reveal</button>
+      ) : (
+        <>
+          <div className="target">{example.target_en}</div>
+          <div className="note">{example.note_en}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function useStorageItems() {
+  const [items, setItems] = useState([]);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY);
+        setItems(res.value ? JSON.parse(res.value) : []);
+      } catch (e) { setItems([]); }
+      setReady(true);
+    })();
+  }, []);
+  const persist = useCallback(async (newItems) => {
+    setItems(newItems);
+    await window.storage.set(STORAGE_KEY, JSON.stringify(newItems));
+  }, []);
+  return { items, ready, persist };
+}
+
+function SpecimenCard({ item, index, expanded, onToggle, onDelete }) {
+  const [confirming, setConfirming] = useState(false);
+  const dueSoon = isDueToday(item);
+  return (
+    <div className="compact-card">
+      <button className="collapsed-btn" onClick={() => onToggle(item.id)}>
+        <div className="top-row">
+          <span className="catalog">NO. {String(index + 1).padStart(3, "0")}</span>
+          <span className={"due-dot" + (dueSoon ? " due" : "")} />
+        </div>
+        <div className="expr">{item.text}</div>
+        <div className="meaning-line">{item.meaning_en}</div>
+        <div style={{marginTop:6, fontSize:10.5, color:'var(--muted)'}}>
+          {item.srs.graduated && <span className="grad-tag">✓ mastered </span>}
+          {item.srs.leech && <span className="leech-tag">⚠ tricky </span>}
+          {expanded ? "hide" : `${item.examples.length} example(s)`}
+        </div>
+      </button>
+      {expanded && (
+        <div className="detail">
+          <YouglishLink text={item.text} />
+          <div className="nuance">{item.nuance_note}</div>
+          <div style={{fontSize:11, color:'var(--muted)', marginTop:8}}>
+            register: {item.register} · collected {item.createdAt}{item.sourceNote ? " · " + item.sourceNote : ""}
+          </div>
+          <div className="examples">{item.examples.map((ex,i) => <ExampleBlock example={ex} key={i} />)}</div>
+          <div style={{marginTop:12, paddingTop:10, borderTop:'1px dashed var(--line)'}}>
+            {!confirming ? (
+              <button className="btn ghost" onClick={() => setConfirming(true)}>🗑 Delete</button>
+            ) : (
+              <span>Delete this? <button className="btn ghost" onClick={() => onDelete(item.id)}>Yes</button> <button className="btn ghost" onClick={() => setConfirming(false)}>No</button></span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectView({ items, persist }) {
+  const [mode, setMode] = useState("mine");
+  const [text, setText] = useState("");
+  const [sourceNote, setSourceNote] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState(null);
+
+  function loadImageBlob(blob) {
+    setImageFile(blob);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result);
+    reader.readAsDataURL(blob);
+  }
+  function onFileChange(e) { const f = e.target.files && e.target.files[0]; if (f) loadImageBlob(f); }
+  useEffect(() => {
+    if (mode !== "mine") return;
+    function onPaste(e) {
+      const items2 = e.clipboardData && e.clipboardData.items;
+      if (!items2) return;
+      for (let i = 0; i < items2.length; i++) {
+        if (items2[i].type && items2[i].type.indexOf("image") !== -1) {
+          const blob = items2[i].getAsFile();
+          if (blob) { loadImageBlob(blob); e.preventDefault(); }
+          break;
+        }
+      }
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [mode]);
+  function clearImage() { setImageFile(null); setImagePreview(null); }
+
+  async function handleSubmit() {
+    if (!text.trim() && !imageFile) { setError("Type an expression or attach a screenshot."); return; }
+    setError(""); setLoading(true); setPreview(null);
+    try {
+      let userText = "";
+      if (text.trim()) userText += `Expression the learner typed: "${text.trim()}"\n`;
+      if (sourceNote.trim()) userText += `Learner's note: ${sourceNote.trim()}\n`;
+      if (!text.trim()) userText += "No expression typed — find one worth studying in the attached image.\n";
+      let content;
+      if (imagePreview) {
+        const base64 = imagePreview.split(",")[1];
+        content = [
+          { type: "image", source: { type: "base64", media_type: imageFile.type || "image/png", data: base64 } },
+          { type: "text", text: userText },
+        ];
+      } else content = userText;
+      const result = await callClaudeJSON(GEN_SYSTEM, content);
+      setPreview(result);
+    } catch (e) { setError("Something went wrong: " + e.message); }
+    finally { setLoading(false); }
+  }
+
+  async function saveIt() {
+    if (!preview) return;
+    const newItem = {
+      id: uid(), text: preview.text, meaning_en: preview.meaning_en, register: preview.register,
+      nuance_note: preview.nuance_note, examples: preview.examples,
+      sourceType: imageFile ? "image" : "text", sourceNote: sourceNote.trim(), createdAt: todayStr(),
+      srs: { interval: 1, ease: 2.5, reps: 0, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: null },
+    };
+    await persist([newItem, ...items]);
+    markActivity("notes");
+    setText(""); setSourceNote(""); clearImage(); setPreview(null);
+  }
+
+  return (
+    <div>
+      <div className="eyebrow">Collect</div>
+      <h2>{mode === "mine" ? "Log a new expression" : "Get a suggestion"}</h2>
+      <div className="mode-toggle">
+        <button className={"mode-btn" + (mode === "mine" ? " active" : "")} onClick={() => setMode("mine")}>My own</button>
+        <button className={"mode-btn" + (mode === "suggested" ? " active" : "")} onClick={() => setMode("suggested")}>🔀 Suggested for me</button>
+      </div>
+      {mode === "suggested" ? (
+        <DiscoverPanel items={items} persist={persist} />
+      ) : (
+        <>
+          <label className="field-label">Expression</label>
+          <input type="text" placeholder="e.g. off the top of my head" value={text} onChange={(e) => setText(e.target.value)} />
+          <label className="field-label">Where did you see it? (optional)</label>
+          <input type="text" placeholder="e.g. YouTube, clinical placement..." value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
+          <label className="field-label">Screenshot (optional — paste with Ctrl/Cmd+V too)</label>
+          {!imagePreview ? (
+            <input type="file" accept="image/*" onChange={onFileChange} />
+          ) : (
+            <div style={{marginTop:8}}>
+              <img src={imagePreview} style={{maxWidth:160, maxHeight:120, borderRadius:6, border:'1px solid var(--line)'}} />
+              <button className="btn ghost" onClick={clearImage}>Remove</button>
+            </div>
+          )}
+          {error && <div className="error-box">{error}</div>}
+          <button className="btn primary" onClick={handleSubmit} disabled={loading}>{loading ? "Analyzing..." : "✨ Analyze this expression"}</button>
+          {preview && (
+            <div className="card" style={{marginTop:16}}>
+              <div className="expr">{preview.text}</div>
+              <YouglishLink text={preview.text} />
+              <div className="meaning">{preview.meaning_en} · <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--muted)'}}>{preview.register}</span></div>
+              <div className="nuance">{preview.nuance_note}</div>
+              <div className="examples">{preview.examples.map((ex,i) => <ExampleBlock example={ex} key={i} />)}</div>
+              <button className="btn primary" onClick={saveIt}>✓ Save to my notebook</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function DiscoverPanel({ items, persist }) {
+  const DAILY_CAP = 2;
+  const [meta, setMeta] = useState({ date: todayStr(), count: 0 });
+  const [metaReady, setMetaReady] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("suggest-meta");
+      const parsed = raw ? JSON.parse(raw) : null;
+      setMeta(parsed && parsed.date === todayStr() ? parsed : { date: todayStr(), count: 0 });
+    } catch (e) { setMeta({ date: todayStr(), count: 0 }); }
+    setMetaReady(true);
+  }, []);
+  function bump() {
+    const next = { date: todayStr(), count: meta.count + 1 };
+    setMeta(next);
+    localStorage.setItem("suggest-meta", JSON.stringify(next));
+  }
+  const remaining = Math.max(0, DAILY_CAP - meta.count);
+
+  const [stage, setStage] = useState("idle");
+  const [candidate, setCandidate] = useState(null);
+  const [exampleIdx, setExampleIdx] = useState(0);
+  const [guessText, setGuessText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState("");
+  const recognitionRef = useRef(null);
+  const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  function startListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    try {
+      const rec = new SR();
+      rec.lang = "en-US"; rec.interimResults = true; rec.continuous = true;
+      rec.onstart = () => setError("");
+      rec.onresult = (e) => { let t=""; for (let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript; setGuessText(t); };
+      rec.onend = () => setListening(false);
+      rec.onerror = (e) => { setListening(false); const m = speechErrorMessage(e.error); if (m) setError(m); };
+      rec.start(); recognitionRef.current = rec; setListening(true);
+    } catch (e) { setListening(false); setError("Couldn't start the mic — try typing instead."); }
+  }
+  function stopListening() { if (recognitionRef.current) recognitionRef.current.stop(); setListening(false); }
+
+  async function getSuggestion() {
+    if (remaining <= 0) return;
+    setStage("loading"); setError("");
+    try {
+      const existingList = items.slice(0,40).map(i=>i.text).join(", ") || "none yet";
+      const userText = `Suggest a new expression for me — I'm not giving you one. Already collected (${items.length} total): ${existingList}. Pick one high-value item I don't have yet.`;
+      const result = await callClaudeJSON(GEN_SYSTEM, userText);
+      const idx = Math.floor(Math.random() * result.examples.length);
+      setCandidate(result); setExampleIdx(idx); setGuessText(""); setStage("guess");
+      bump();
+    } catch (e) { setError("Something went wrong: " + e.message); setStage("idle"); }
+  }
+  function reveal() { setStage("reveal"); }
+  async function saveCandidate() {
+    if (!candidate) return;
+    const newItem = {
+      id: uid(), text: candidate.text, meaning_en: candidate.meaning_en, register: candidate.register,
+      nuance_note: candidate.nuance_note, examples: candidate.examples,
+      sourceType: "suggested", sourceNote: "Suggested for you", createdAt: todayStr(),
+      srs: { interval: 1, ease: 2.5, reps: 1, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: todayStr() },
+    };
+    await persist([newItem, ...items]);
+    markActivity("notes");
+    resetToIdle();
+  }
+  function resetToIdle() { setCandidate(null); setGuessText(""); setStage("idle"); }
+
+  if (!metaReady) return <div>Loading...</div>;
+  if (stage === "idle") {
+    return (
+      <div>
+        <p className="sub">{remaining > 0 ? `${remaining} suggestion(s) left today — kept small on purpose.` : "You've used today's suggestions — come back tomorrow."}</p>
+        {error && <div className="error-box">{error}</div>}
+        <button className="btn primary" onClick={getSuggestion} disabled={remaining<=0}>🔀 Suggest one for me</button>
+      </div>
+    );
+  }
+  if (stage === "loading") return <div>Picking something useful...</div>;
+  if (stage === "guess" && candidate) {
+    const ex = candidate.examples[exampleIdx];
+    return (
+      <div>
+        <div className="scenario-box">
+          <ContextBadge label={ex.context_label} />
+          <div style={{fontSize:15, marginTop:8, lineHeight:1.5}}>{ex.scenario_en}</div>
+          {ex.intent_hint && <div className="intent-hint" style={{marginTop:8}}>{ex.intent_hint}</div>}
+        </div>
+        <p className="sub" style={{marginTop:12}}>Before I reveal it — give it a real attempt, aimed at that hint.</p>
+        <div className="speak-row">
+          {speechSupported && <button className={"mic-btn"+(listening?" listening":"")} onClick={listening?stopListening:startListening}>{listening?"■":"🎙"}</button>}
+          <textarea placeholder={speechSupported?"Speak into the mic, or type your guess":"Type your guess here"} value={guessText} onChange={e=>setGuessText(e.target.value)} />
+        </div>
+        {error && <div className="error-box">{error}</div>}
+        <div className="dictation-hint">On a laptop, your OS's own dictation also works here — Mac: Fn twice (if not remapped) · Windows: Win+H.</div>
+        <button className="btn primary" onClick={reveal}>✓ {guessText.trim()?"Show me the answer":"I'm stuck — show me anyway"}</button>
+      </div>
+    );
+  }
+  if (stage === "reveal" && candidate) {
+    const ex = candidate.examples[exampleIdx];
+    return (
+      <div>
+        <div style={{display:'flex', gap:12, marginTop:8}}>
+          <div className="card" style={{flex:1}}>
+            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10, textTransform:'uppercase', color:'var(--muted)'}}>Your attempt</div>
+            <div style={{fontSize:13, marginTop:6}}>{guessText.trim() || "(nothing — noticing the gap is the point)"}</div>
+          </div>
+          <div className="card" style={{flex:1}}>
+            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10, textTransform:'uppercase', color:'var(--muted)'}}>Native version</div>
+            <div style={{fontSize:13, marginTop:6, fontWeight:700, color:'var(--teal-dark)'}}>{ex.target_en}</div>
+          </div>
+        </div>
+        <div className="card" style={{marginTop:16}}>
+          <div className="expr">{candidate.text}</div>
+          <YouglishLink text={candidate.text} />
+          <div className="meaning">{candidate.meaning_en} · <span style={{fontSize:11,color:'var(--muted)'}}>{candidate.register}</span></div>
+          <div className="nuance">{candidate.nuance_note}</div>
+          <div className="examples">{candidate.examples.map((e2,i) => <ExampleBlock example={e2} key={i} />)}</div>
+          <div style={{display:'flex', gap:10, marginTop:16}}>
+            <button className="btn primary" onClick={saveCandidate}>✓ Save to my notebook</button>
+            <button className="btn ghost" onClick={resetToIdle}>Not useful, skip it</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+function ReviewView({ items, persist }) {
+  const [queue, setQueue] = useState(null);
+  const [current, setCurrent] = useState(null);
+  const [exampleIdx, setExampleIdx] = useState(0);
+  const [stage, setStage] = useState("idle");
+  const [transcript, setTranscript] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [listening, setListening] = useState(false);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [error, setError] = useState("");
+  const [reviewedCount, setReviewedCount] = useState(0);
+  const [leechPrompt, setLeechPrompt] = useState(false);
+  const recognitionRef = useRef(null);
+  const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const dueCount = items.filter(isDueToday).length;
+
+  function pickFromUpdated(list, updatedItems) {
+    if (list.length === 0) { setCurrent(null); setQueue([]); return; }
+    const id = list[0]; const rest = list.slice(1);
+    const item = updatedItems.find(i => i.id === id);
+    if (!item) { pickFromUpdated(rest, updatedItems); return; }
+    const idx = Math.floor(Math.random() * item.examples.length);
+    setCurrent(item); setExampleIdx(idx); setQueue(rest);
+    setStage("prompt"); setTranscript(""); setFeedback(null); setError(""); setLeechPrompt(false);
+  }
+  function startSession() {
+    const due = items.filter(isDueToday);
+    setReviewedCount(0);
+    if (due.length === 0) { setQueue([]); setCurrent(null); return; }
+    const shuffled = [...due].sort(() => Math.random()-0.5).map(i=>i.id);
+    pickFromUpdated(shuffled, items);
+  }
+  function startListening() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    try {
+      const rec = new SR();
+      rec.lang="en-US"; rec.interimResults=true; rec.continuous=true;
+      rec.onstart = () => setError("");
+      rec.onresult = (e) => { let t=""; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript; setTranscript(t); };
+      rec.onend = () => setListening(false);
+      rec.onerror = (e) => { setListening(false); const m=speechErrorMessage(e.error); if(m) setError(m); };
+      rec.start(); recognitionRef.current = rec; setListening(true);
+    } catch (e) { setListening(false); setError("Couldn't start the mic — try typing instead."); }
+  }
+  function stopListening() { if (recognitionRef.current) recognitionRef.current.stop(); setListening(false); }
+
+  async function submitAnswer() {
+    if (!transcript.trim()) { setError("Record what you said, or type it in."); return; }
+    setError(""); setLoadingFeedback(true);
+    try {
+      const ex = current.examples[exampleIdx];
+      const userText = `Target expression: "${current.text}"\nScenario: ${ex.scenario_en}\n(Reference: ${ex.target_en})\nLearner said: "${transcript.trim()}"`;
+      const result = await callClaudeJSON(FEEDBACK_SYSTEM, userText);
+      setFeedback(result); setStage("answered");
+    } catch (e) { setError("Something went wrong: " + e.message); }
+    finally { setLoadingFeedback(false); }
+  }
+
+  function rate(rating) {
+    const updatedSrs = nextSRS(current.srs, rating);
+    const updatedItems = items.map(it => it.id === current.id ? { ...it, srs: updatedSrs } : it);
+    persist(updatedItems);
+    markActivity("notes");
+    setReviewedCount(c => c+1);
+    if (updatedSrs.leech) { setLeechPrompt(true); return; }
+    advance(rating, updatedItems);
+  }
+  function advance(rating, updatedItems) {
+    let newQueue = queue || [];
+    if (rating === "again") { newQueue = [...newQueue]; newQueue.splice(Math.min(2, newQueue.length), 0, current.id); }
+    pickFromUpdated(newQueue, updatedItems);
+  }
+  function retireLeech() {
+    const updatedItems = items.map(it => it.id === current.id ? { ...it, srs: { ...it.srs, graduated: true } } : it);
+    persist(updatedItems);
+    pickFromUpdated(queue || [], updatedItems);
+  }
+  function keepTryingLeech() {
+    const updatedItems = items.map(it => it.id === current.id ? { ...it, srs: { ...it.srs, consecutiveAgain: 0, leech: false } } : it);
+    persist(updatedItems);
+    pickFromUpdated(queue || [], updatedItems);
+  }
+
+  if (queue === null) {
+    return (
+      <div>
+        <div className="eyebrow">Review</div>
+        <h2>Today's review</h2>
+        <p className="sub">Due today: {dueCount}</p>
+        {dueCount === 0 ? <div className="empty">Nothing due today.</div> : <button className="btn primary" onClick={startSession}>🎙 Start reviewing</button>}
+      </div>
+    );
+  }
+  if (leechPrompt) {
+    return (
+      <div className="leech-box">
+        <strong>This one keeps not sticking.</strong>
+        <p style={{marginTop:8}}>You've missed "{current.text}" several times in a row. Sometimes it's better to let a stubborn one go rather than keep grinding on it.</p>
+        <div style={{display:'flex', gap:10, marginTop:12}}>
+          <button className="btn primary" onClick={retireLeech}>Retire it (stop reviewing)</button>
+          <button className="btn ghost" onClick={keepTryingLeech}>Keep trying</button>
+        </div>
+      </div>
+    );
+  }
+  if (current === null) {
+    return (
+      <div>
+        <div className="eyebrow">Session done</div>
+        <h2>That's a wrap!</h2>
+        <p className="sub">Reviewed {reviewedCount} this session.</p>
+        <button className="btn primary" onClick={() => setQueue(null)}>Back to overview</button>
+      </div>
+    );
+  }
+  const ex = current.examples[exampleIdx];
+  return (
+    <div>
+      <div className="eyebrow">Reviewing · {queue.length+1} left</div>
+      <h2>What would you say here?</h2>
+      <div className="scenario-box">
+        <ContextBadge label={ex.context_label} />
+        <div style={{fontSize:15, marginTop:8, lineHeight:1.5}}>{ex.scenario_en}</div>
+        {ex.intent_hint && <div className="intent-hint" style={{marginTop:8}}>{ex.intent_hint}</div>}
+      </div>
+      <div className="speak-row">
+        {speechSupported && <button className={"mic-btn"+(listening?" listening":"")} onClick={listening?stopListening:startListening} disabled={stage==="answered"}>{listening?"■":"🎙"}</button>}
+        <textarea placeholder={speechSupported?"Speak into the mic, or type it here":"Type what you'd say here"} value={transcript} onChange={e=>setTranscript(e.target.value)} disabled={stage==="answered"} />
+      </div>
+      {error && <div className="error-box">{error}</div>}
+      <div className="dictation-hint">On a laptop, your OS's own dictation also works here — Mac: Fn twice (if not remapped) · Windows: Win+H.</div>
+      {stage === "prompt" && (
+        <button className="btn primary" onClick={submitAnswer} disabled={loadingFeedback}>{loadingFeedback?"Checking...":"✓ Submit what you said"}</button>
+      )}
+      {stage === "answered" && feedback && (
+        <div className="feedback-box">
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--teal-dark)',textTransform:'uppercase'}}>{feedback.naturalness}{feedback.used_target?" · used the target":" · didn't use the target"}</div>
+          <div style={{fontSize:14, marginTop:8}}>{feedback.feedback_en}</div>
+          {feedback.better_version_en && <div style={{fontSize:13, marginTop:8, color:'var(--muted)'}}>More natural: <span style={{color:'var(--ink)', fontWeight:600}}>{feedback.better_version_en}</span></div>}
+          <div style={{fontSize:13, marginTop:8, color:'var(--muted)'}}>Reference: <span style={{color:'var(--ink)', fontWeight:600}}>{ex.target_en}</span></div>
+          <div className="honest-hint">Rate honestly — if you weren't sure you'd have said this on your own, pick Hard or Again even if you recognize it.</div>
+          <div className="rating-row">
+            <button className="rating-btn again" onClick={()=>rate("again")}>Again</button>
+            <button className="rating-btn hard" onClick={()=>rate("hard")}>Hard</button>
+            <button className="rating-btn good" onClick={()=>rate("good")}>Good</button>
+            <button className="rating-btn easy" onClick={()=>rate("easy")}>Easy</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ArchiveView({ items, persist }) {
+  const [expanded, setExpanded] = useState(new Set());
+  function toggle(id) { setExpanded(prev => { const n = new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; }); }
+  async function handleDelete(id) { await persist(items.filter(i => i.id !== id)); }
+  return (
+    <div>
+      <div className="eyebrow">Archive</div>
+      <h2>{items.length} expressions collected</h2>
+      {items.length === 0 ? <div className="empty">Nothing collected yet.</div> : (
+        <div className="card-list">
+          {items.map((item,i) => <SpecimenCard key={item.id} item={item} index={i} expanded={expanded.has(item.id)} onToggle={toggle} onDelete={handleDelete} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const { items, ready, persist } = useStorageItems();
+  const [tab, setTab] = useState("collect");
+  const dueCount = items.filter(isDueToday).length;
+  return (
+    <div>
+      <div style={{marginBottom:10}}>
+        <span className="stat-chip">Due today {dueCount}</span>
+        <span className="stat-chip">Total {items.length}</span>
+      </div>
+      <div className="inner-tabs">
+        <button className={tab==="collect"?"active":""} onClick={()=>setTab("collect")}>+ Collect</button>
+        <button className={tab==="review"?"active":""} onClick={()=>setTab("review")}>🎙 Review</button>
+        <button className={tab==="archive"?"active":""} onClick={()=>setTab("archive")}>📚 Archive</button>
+      </div>
+      {!ready ? <div>Loading...</div> : tab==="collect" ? <CollectView items={items} persist={persist} /> : tab==="review" ? <ReviewView items={items} persist={persist} /> : <ArchiveView items={items} persist={persist} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
