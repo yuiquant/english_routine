@@ -141,3 +141,17 @@ function speechErrorMessage(errorCode) {
       return `Mic error (${errorCode || "unknown"}) — you can type instead.`;
   }
 }
+
+// ---- Pick a MediaRecorder mimeType that this browser can both record AND play back.
+// Safari doesn't support WebM playback at all, so we prefer mp4 there; Chrome/Firefox
+// prefer webm. Always check isTypeSupported before using a candidate.
+function pickMediaMimeType(kind) {
+  const candidates = kind === "audio"
+    ? ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]
+    : ["video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+  if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) return "";
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return "";
+}
