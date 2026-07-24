@@ -3,6 +3,10 @@
 const API_PROXY_URL = "https://english-study-proxy.nimbosjung.workers.dev/v1/messages";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
+// Caps how many reviews one sitting shows you. Anything past this just waits for
+// tomorrow — it isn't lost, and the most overdue items always get shown first so
+// nothing important gets starved by the cap.
+const DAILY_REVIEW_CAP = 12;
 
 // ---- Date helpers ----
 function todayStr() {
