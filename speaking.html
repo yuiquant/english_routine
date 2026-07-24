@@ -40,6 +40,9 @@
   </div>
   <div id="error" class="error-box" style="text-align:center"></div>
   <video id="playback" controls playsinline style="display:none"></video>
+  <div id="downloadWrap" style="text-align:center; margin-top:10px; display:none;">
+    <a id="downloadLink" class="btn ghost" download="speaking-practice.webm">⬇ Download recording (open in Photos/QuickTime if it won't play here)</a>
+  </div>
 </div>
 
 <script src="shared.js"></script>
@@ -71,18 +74,41 @@
   }
   initCamera();
 
-  startBtn.onclick = function () {
-    if (!stream) { errorEl.textContent = "Camera isn't ready yet."; return; }
+  playback.addEventListener('error', () => {
+    const code = playback.error && playback.error.code;
+    const reason = { 1: "loading was aborted", 2: "a network error", 3: "the video couldn't be decoded (format issue)", 4: "this format isn't supported by this browser" }[code] || "an unknown issue";
+    errorEl.textContent = `This browser couldn't play the recording back here (${reason}) — try the download link below to open it in another app.`;
+  });
+
+  startBtn.onclick = async function () {
     errorEl.textContent = "";
+    // Grab a brand-new stream right at record time (a long-held preview stream seems to
+    // produce broken files in Safari) — same approach as the Shadowing tab, which works.
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } catch (e) {
+      errorEl.textContent = "Couldn't access the camera/mic — check your browser's site permissions.";
+      return;
+    }
+    live.srcObject = stream;
+    live.style.display = 'block';
     chunks = [];
     const mimeType = pickMediaMimeType("video");
     mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
     mediaRecorder.onstop = () => {
       const blob = new Blob(chunks, { type: mimeType || "video/webm" });
-      playback.src = URL.createObjectURL(blob);
+      const blobUrl = URL.createObjectURL(blob);
+      playback.src = blobUrl;
+      playback.load();
       playback.style.display = 'block';
       live.style.display = 'none';
+      const dlLink = document.getElementById('downloadLink');
+      const ext = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+      dlLink.href = blobUrl;
+      dlLink.download = `speaking-practice.${ext}`;
+      document.getElementById('downloadWrap').style.display = 'block';
       markActivity("speaking");
     };
     mediaRecorder.start();
@@ -108,6 +134,8 @@
     timerEl.textContent = "00:00";
     againBtn.style.display = 'none';
     startBtn.style.display = 'inline-flex';
+    document.getElementById('downloadWrap').style.display = 'none';
+    errorEl.textContent = "";
   };
 </script>
 </body>
