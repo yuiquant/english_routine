@@ -40,9 +40,6 @@
   </div>
   <div id="error" class="error-box" style="text-align:center"></div>
   <video id="playback" controls playsinline style="display:none"></video>
-  <div id="downloadWrap" style="text-align:center; margin-top:10px; display:none;">
-    <a id="downloadLink" class="btn ghost" download="speaking-practice.webm">⬇ Download recording (open in Photos/QuickTime if it won't play here)</a>
-  </div>
 </div>
 
 <script src="shared.js"></script>
@@ -104,14 +101,9 @@
       playback.load();
       playback.style.display = 'block';
       live.style.display = 'none';
-      const dlLink = document.getElementById('downloadLink');
-      const ext = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-      dlLink.href = blobUrl;
-      dlLink.download = `speaking-practice.${ext}`;
-      document.getElementById('downloadWrap').style.display = 'block';
       markActivity("speaking");
     };
-    mediaRecorder.start();
+    mediaRecorder.start(1000); // periodic chunks — helps avoid the video track freezing partway through on some browsers
     seconds = 0;
     timerEl.textContent = formatTime(0);
     timerInterval = setInterval(() => { seconds++; timerEl.textContent = formatTime(seconds); }, 1000);
@@ -134,7 +126,6 @@
     timerEl.textContent = "00:00";
     againBtn.style.display = 'none';
     startBtn.style.display = 'inline-flex';
-    document.getElementById('downloadWrap').style.display = 'none';
     errorEl.textContent = "";
   };
 </script>
