@@ -1,6 +1,11 @@
 // ---- Config ----
 // Set this to your Cloudflare Worker URL after you deploy the proxy (see DEPLOY.md).
-const API_PROXY_URL = "https://english-study-proxy.nimbosjung.workers.dev/v1/messages";
+const WORKER_BASE_URL = "https://english-study-proxy.nimbosjung.workers.dev";
+const API_PROXY_URL = WORKER_BASE_URL + "/v1/messages";
+// Must match the SYNC_KEY secret you set on the Worker. Any string — just keeps
+// strangers from writing to your synced data if they guess your Worker URL.
+// (Obscurity, not real security — same caveat as everything else client-side here.)
+const SYNC_KEY = "english-study-data";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
 // Caps how many reviews one sitting shows you. Anything past this just waits for
@@ -21,19 +26,50 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// ---- Storage shim: same shape as the Claude-artifact window.storage API ----
+// ---- Storage: syncs through the Worker's KV store so "web" and "home screen app" see
+// the same data, with localStorage as an instant local cache / offline fallback. Same
+// get/set/list/delete shape as the Claude-artifact window.storage API.
 window.storage = {
   async get(key) {
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
+        headers: { "X-Sync-Key": SYNC_KEY },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.value !== null && data.value !== undefined) {
+          localStorage.setItem(key, data.value);
+          return { key, value: data.value };
+        }
+      }
+    } catch (e) {
+      // offline or Worker unreachable — fall back to local cache below
+    }
     const raw = localStorage.getItem(key);
     if (raw === null) throw new Error("not found: " + key);
     return { key, value: raw };
   },
   async set(key, value) {
-    localStorage.setItem(key, value);
+    localStorage.setItem(key, value); // instant, always works even offline
+    try {
+      await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "X-Sync-Key": SYNC_KEY },
+        body: JSON.stringify({ value }),
+      });
+    } catch (e) {
+      // best-effort sync — data is still safe locally, just not synced elsewhere yet
+    }
     return { key, value };
   },
   async delete(key) {
     localStorage.removeItem(key);
+    try {
+      await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
+        method: "DELETE",
+        headers: { "X-Sync-Key": SYNC_KEY },
+      });
+    } catch (e) {}
     return { key, deleted: true };
   },
   async list(prefix = "") {
