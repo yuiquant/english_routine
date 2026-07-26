@@ -1,11 +1,11 @@
 // ---- Config ----
 // Set this to your Cloudflare Worker URL after you deploy the proxy (see DEPLOY.md).
 const WORKER_BASE_URL = "https://english-study-proxy.nimbosjung.workers.dev";
-const API_PROXY_URL = WORKER_BASE_URL + "/v1/messages";
+const API_PROXY_URL = "https://english-study-proxy.nimbosjung.workers.dev/v1/messages";
 // Must match the SYNC_KEY secret you set on the Worker. Any string — just keeps
 // strangers from writing to your synced data if they guess your Worker URL.
 // (Obscurity, not real security — same caveat as everything else client-side here.)
-const SYNC_KEY = "english-study-data";
+const SYNC_KEY = "CHANGE-ME-make-up-a-random-string";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
 // Caps how many reviews one sitting shows you. Anything past this just waits for
@@ -35,12 +35,29 @@ window.storage = {
       const res = await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
         headers: { "X-Sync-Key": SYNC_KEY },
       });
+      if (!res.ok) {
+        console.warn("[sync] GET failed", res.status, await res.text().catch(() => ""));
+      }
       if (res.ok) {
         const data = await res.json();
         if (data && data.value !== null && data.value !== undefined) {
           localStorage.setItem(key, data.value);
           return { key, value: data.value };
         }
+        // KV has never seen this key — if this device already has local data (e.g. it
+        // was saved before sync was set up), push it up now so other devices can pull it.
+        const localRaw = localStorage.getItem(key);
+        if (localRaw !== null) {
+          try {
+            await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", "X-Sync-Key": SYNC_KEY },
+              body: JSON.stringify({ value: localRaw }),
+            });
+          } catch (e) {}
+          return { key, value: localRaw };
+        }
+        throw new Error("not found: " + key);
       }
     } catch (e) {
       // offline or Worker unreachable — fall back to local cache below
@@ -52,13 +69,14 @@ window.storage = {
   async set(key, value) {
     localStorage.setItem(key, value); // instant, always works even offline
     try {
-      await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
+      const res = await fetch(`${WORKER_BASE_URL}/data/${encodeURIComponent(key)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-Sync-Key": SYNC_KEY },
         body: JSON.stringify({ value }),
       });
+      if (!res.ok) console.warn("[sync] PUT failed", res.status, await res.text().catch(() => ""));
     } catch (e) {
-      // best-effort sync — data is still safe locally, just not synced elsewhere yet
+      console.warn("[sync] PUT error", e);
     }
     return { key, value };
   },
