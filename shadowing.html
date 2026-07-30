@@ -49,9 +49,10 @@
 
   <label class="field-label">YouTube URL</label>
   <input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
-  <div style="display:flex; gap:8px; margin-top:8px;">
+  <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
     <button class="btn primary" id="loadBtn">Load video</button>
     <button class="btn ghost" id="saveMaterialBtn">💾 Save this material</button>
+    <button class="btn ghost" id="saveAsNewBtn" style="display:none">💾 Save as new copy instead</button>
   </div>
   <div id="ytError" class="error-box"></div>
 
@@ -102,6 +103,7 @@
 <script>
   // ---- Saved materials library (localStorage only, no API cost) ----
   const LIBRARY_KEY = "shadowing-library";
+  let currentMaterialId = null; // set when a saved material is loaded, so Save updates it in place
   function loadLibrary() {
     try { return JSON.parse(localStorage.getItem(LIBRARY_KEY)) || []; } catch (e) { return []; }
   }
@@ -111,10 +113,29 @@
     const list = loadLibrary();
     sel.innerHTML = '<option value="">— saved materials —</option>' +
       list.map(m => `<option value="${m.id}">${m.title}</option>`).join('');
+    if (currentMaterialId) sel.value = currentMaterialId;
   }
   refreshMaterialSelect();
+  function updateSaveButtonLabel() {
+    const btn = document.getElementById('saveMaterialBtn');
+    const asNewBtn = document.getElementById('saveAsNewBtn');
+    if (currentMaterialId) {
+      btn.textContent = "💾 Save changes to this material";
+      asNewBtn.style.display = 'inline-flex';
+    } else {
+      btn.textContent = "💾 Save this material";
+      asNewBtn.style.display = 'none';
+    }
+  }
+  updateSaveButtonLabel();
 
-  document.getElementById('saveMaterialBtn').onclick = function () {
+  // If the learner types into these fields by hand (not via Load), stop treating it as
+  // "editing the loaded material" — otherwise Save could overwrite the wrong entry.
+  // Programmatic value changes (from Load) don't fire 'input', so this is safe.
+  document.getElementById('ytUrl').addEventListener('input', () => { currentMaterialId = null; updateSaveButtonLabel(); });
+  document.getElementById('scriptBox').addEventListener('input', () => { currentMaterialId = null; updateSaveButtonLabel(); });
+
+  function saveAsNewMaterial() {
     const url = document.getElementById('ytUrl').value.trim();
     const script = document.getElementById('scriptBox').value.trim();
     if (!url && !script) { setYtError("Nothing to save yet — add a URL or script first."); return; }
@@ -122,10 +143,35 @@
     const title = prompt("Name this material:", defaultTitle);
     if (!title) return;
     const list = loadLibrary();
-    list.unshift({ id: uid(), title, url, script });
+    const newItem = { id: uid(), title, url, script };
+    list.unshift(newItem);
     saveLibrary(list);
+    currentMaterialId = newItem.id;
     refreshMaterialSelect();
+    updateSaveButtonLabel();
     setYtError("");
+  }
+
+  document.getElementById('saveMaterialBtn').onclick = function () {
+    const url = document.getElementById('ytUrl').value.trim();
+    const script = document.getElementById('scriptBox').value.trim();
+    if (!url && !script) { setYtError("Nothing to save yet — add a URL or script first."); return; }
+    if (currentMaterialId) {
+      // Update the currently loaded material in place — no prompt, keeps the same title.
+      const list = loadLibrary();
+      const idx = list.findIndex(m => m.id === currentMaterialId);
+      if (idx === -1) { saveAsNewMaterial(); return; }
+      list[idx] = { ...list[idx], url, script };
+      saveLibrary(list);
+      refreshMaterialSelect();
+      setYtError("");
+      return;
+    }
+    saveAsNewMaterial();
+  };
+  document.getElementById('saveAsNewBtn').onclick = function () {
+    currentMaterialId = null;
+    saveAsNewMaterial();
   };
   document.getElementById('loadMaterialBtn').onclick = function () {
     const id = document.getElementById('materialSelect').value;
@@ -134,6 +180,8 @@
     if (!item) return;
     document.getElementById('ytUrl').value = item.url;
     document.getElementById('scriptBox').value = item.script;
+    currentMaterialId = item.id;
+    updateSaveButtonLabel();
     document.getElementById('loadBtn').click();
   };
   document.getElementById('deleteMaterialBtn').onclick = function () {
@@ -141,6 +189,7 @@
     if (!id) return;
     if (!confirm("Delete this saved material?")) return;
     saveLibrary(loadLibrary().filter(m => m.id !== id));
+    if (currentMaterialId === id) { currentMaterialId = null; updateSaveButtonLabel(); }
     refreshMaterialSelect();
   };
 
