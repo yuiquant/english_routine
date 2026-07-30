@@ -300,17 +300,28 @@ function CollectView({ items, persist }) {
     finally { setLoading(false); }
   }
 
+  const [saving, setSaving] = useState(false);
   async function saveIt() {
-    if (!preview) return;
-    const newItem = {
-      id: uid(), text: preview.text, meaning_en: preview.meaning_en, register: preview.register,
-      nuance_note: preview.nuance_note, examples: preview.examples,
-      sourceType: imageFile ? "image" : "text", sourceNote: sourceNote.trim(), createdAt: todayStr(),
-      srs: { interval: 1, ease: 2.5, reps: 0, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: null },
-    };
-    await persist([newItem, ...items]);
-    markActivity("notes");
-    setText(""); setSourceNote(""); clearImage(); setPreview(null);
+    if (!preview || saving) return;
+    setSaving(true);
+    try {
+      const already = items.some(i => i.text.trim().toLowerCase() === preview.text.trim().toLowerCase());
+      if (already) {
+        setError("This expression is already in your notebook — skipped saving a duplicate.");
+        return;
+      }
+      const newItem = {
+        id: uid(), text: preview.text, meaning_en: preview.meaning_en, register: preview.register,
+        nuance_note: preview.nuance_note, examples: preview.examples,
+        sourceType: imageFile ? "image" : "text", sourceNote: sourceNote.trim(), createdAt: todayStr(),
+        srs: { interval: 1, ease: 2.5, reps: 0, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: null },
+      };
+      await persist([newItem, ...items]);
+      markActivity("notes");
+      setText(""); setSourceNote(""); clearImage(); setPreview(null); setError("");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -347,7 +358,7 @@ function CollectView({ items, persist }) {
               <div className="meaning">{preview.meaning_en} · <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--muted)'}}>{preview.register}</span></div>
               <div className="nuance">{preview.nuance_note}</div>
               <div className="examples">{preview.examples.map((ex,i) => <ExampleBlock example={ex} key={i} />)}</div>
-              <button className="btn primary" onClick={saveIt}>✓ Save to my notebook</button>
+              <button className="btn primary" onClick={saveIt} disabled={saving}>{saving ? "Saving..." : "✓ Save to my notebook"}</button>
             </div>
           )}
         </>
@@ -357,32 +368,27 @@ function CollectView({ items, persist }) {
 }
 
 function DiscoverPanel({ items, persist }) {
-  const DAILY_CAP = 2;
-  const [meta, setMeta] = useState({ date: todayStr(), count: 0 });
-  const [metaReady, setMetaReady] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("suggest-meta");
-      const parsed = raw ? JSON.parse(raw) : null;
-      setMeta(parsed && parsed.date === todayStr() ? parsed : { date: todayStr(), count: 0 });
-    } catch (e) { setMeta({ date: todayStr(), count: 0 }); }
-    setMetaReady(true);
-  }, []);
-  function bump() {
-    const next = { date: todayStr(), count: meta.count + 1 };
-    setMeta(next);
-    localStorage.setItem("suggest-meta", JSON.stringify(next));
-  }
-  const remaining = Math.max(0, DAILY_CAP - meta.count);
-
   const [stage, setStage] = useState("idle");
   const [candidate, setCandidate] = useState(null);
   const [exampleIdx, setExampleIdx] = useState(0);
   const [guessText, setGuessText] = useState("");
   const [listening, setListening] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const recognitionRef = useRef(null);
   const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+  // Track expressions we've suggested recently, even if the learner skipped them
+  // (not saved) — otherwise the model has no way to know not to repeat them.
+  const RECENT_KEY = "recent-suggestions";
+  function loadRecentSuggestions() {
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch (e) { return []; }
+  }
+  function pushRecentSuggestion(text) {
+    const list = loadRecentSuggestions();
+    list.unshift(text);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 25)));
+  }
 
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -400,39 +406,48 @@ function DiscoverPanel({ items, persist }) {
   function stopListening() { if (recognitionRef.current) recognitionRef.current.stop(); setListening(false); }
 
   async function getSuggestion() {
-    if (remaining <= 0) return;
     setStage("loading"); setError("");
     try {
-      const existingList = items.slice(0,40).map(i=>i.text).join(", ") || "none yet";
-      const userText = `Suggest a new expression for me — I'm not giving you one. Already collected (${items.length} total): ${existingList}. Pick one high-value item I don't have yet.`;
+      const savedList = items.slice(0,40).map(i=>i.text);
+      const recentlySkipped = loadRecentSuggestions();
+      const combined = [...new Set([...savedList, ...recentlySkipped])].slice(0, 60);
+      const existingList = combined.join(", ") || "none yet";
+      const userText = `Suggest a new expression for me — I'm not giving you one. Already collected or recently suggested (don't repeat any of these): ${existingList}. Pick one high-value item I don't have yet.`;
       const result = await callClaudeJSON(GEN_SYSTEM, userText);
       const idx = Math.floor(Math.random() * result.examples.length);
       setCandidate(result); setExampleIdx(idx); setGuessText(""); setStage("guess");
-      bump();
+      pushRecentSuggestion(result.text);
     } catch (e) { setError("Something went wrong: " + e.message); setStage("idle"); }
   }
   function reveal() { setStage("reveal"); }
   async function saveCandidate() {
-    if (!candidate) return;
-    const newItem = {
-      id: uid(), text: candidate.text, meaning_en: candidate.meaning_en, register: candidate.register,
-      nuance_note: candidate.nuance_note, examples: candidate.examples,
-      sourceType: "suggested", sourceNote: "Suggested for you", createdAt: todayStr(),
-      srs: { interval: 1, ease: 2.5, reps: 1, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: todayStr() },
-    };
-    await persist([newItem, ...items]);
-    markActivity("notes");
-    resetToIdle();
+    if (!candidate || saving) return;
+    setSaving(true);
+    try {
+      const already = items.some(i => i.text.trim().toLowerCase() === candidate.text.trim().toLowerCase());
+      if (already) { setError("This expression is already in your notebook."); return; }
+      const newItem = {
+        id: uid(), text: candidate.text, meaning_en: candidate.meaning_en, register: candidate.register,
+        nuance_note: candidate.nuance_note, examples: candidate.examples,
+        sourceType: "suggested", sourceNote: "Suggested for you", createdAt: todayStr(),
+        srs: { interval: 1, ease: 2.5, reps: 1, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: todayStr() },
+      };
+      await persist([newItem, ...items]);
+      markActivity("notes");
+      resetToIdle();
+      setError("");
+    } finally {
+      setSaving(false);
+    }
   }
   function resetToIdle() { setCandidate(null); setGuessText(""); setStage("idle"); }
 
-  if (!metaReady) return <div>Loading...</div>;
   if (stage === "idle") {
     return (
       <div>
-        <p className="sub">{remaining > 0 ? `${remaining} suggestion(s) left today — kept small on purpose.` : "You've used today's suggestions — come back tomorrow."}</p>
+        <p className="sub">Get a high-value expression picked for you — phrasal verbs, conversational hedges, or everyday idioms, chosen to fill gaps in what you've already collected.</p>
         {error && <div className="error-box">{error}</div>}
-        <button className="btn primary" onClick={getSuggestion} disabled={remaining<=0}>🔀 Suggest one for me</button>
+        <button className="btn primary" onClick={getSuggestion}>🔀 Suggest one for me</button>
       </div>
     );
   }
@@ -478,7 +493,7 @@ function DiscoverPanel({ items, persist }) {
           <div className="nuance">{candidate.nuance_note}</div>
           <div className="examples">{candidate.examples.map((e2,i) => <ExampleBlock example={e2} key={i} />)}</div>
           <div style={{display:'flex', gap:10, marginTop:16}}>
-            <button className="btn primary" onClick={saveCandidate}>✓ Save to my notebook</button>
+            <button className="btn primary" onClick={saveCandidate} disabled={saving}>{saving ? "Saving..." : "✓ Save to my notebook"}</button>
             <button className="btn ghost" onClick={resetToIdle}>Not useful, skip it</button>
           </div>
         </div>
