@@ -135,7 +135,12 @@ Output ONLY valid JSON, no markdown fences, no commentary:
 }
 Produce however many examples earn their place — usually 2, sometimes 1, occasionally 3. Never pad to hit a
 count. Draw each from a DIFFERENT one of the learner's real contexts, only where this expression would
-plausibly come up. If the learner instead asks you to pick one for them (no expression/image given): choose
+plausibly come up. Beyond just using different context labels, make the examples genuinely FEEL different
+from each other: vary the emotional tone (frustrated vs amused vs matter-of-fact), the shape (a narrated
+situation vs a snippet of back-and-forth dialogue), who's being addressed (a stranger, his wife, a close
+friend, a patient), and the specific concrete details — avoid two examples that could both be described the
+same way (e.g. don't give two "mildly annoyed explaining something at work" examples back to back). If the
+learner instead asks you to pick one for them (no expression/image given): choose
 ONE natural, high-frequency item not already in the list they've collected — rotate across phrasal
 verbs/light-verb collocations, conversational chunks/hedges, and everyday idioms rather than defaulting to one
 type; lean toward whichever category looks under-represented in their collection. Prioritize everyday native
@@ -379,15 +384,19 @@ function DiscoverPanel({ items, persist }) {
   const speechSupported = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
   // Track expressions we've suggested recently, even if the learner skipped them
-  // (not saved) — otherwise the model has no way to know not to repeat them.
+  // (not saved) — otherwise the model has no way to know not to repeat them. Synced
+  // through the same KV store as everything else, so it's consistent across devices.
   const RECENT_KEY = "recent-suggestions";
-  function loadRecentSuggestions() {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch (e) { return []; }
+  async function loadRecentSuggestions() {
+    try {
+      const res = await window.storage.get(RECENT_KEY);
+      return JSON.parse(res.value) || [];
+    } catch (e) { return []; }
   }
-  function pushRecentSuggestion(text) {
-    const list = loadRecentSuggestions();
+  async function pushRecentSuggestion(text) {
+    const list = await loadRecentSuggestions();
     list.unshift(text);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 25)));
+    await window.storage.set(RECENT_KEY, JSON.stringify(list.slice(0, 25)));
   }
 
   function startListening() {
@@ -409,14 +418,14 @@ function DiscoverPanel({ items, persist }) {
     setStage("loading"); setError("");
     try {
       const savedList = items.slice(0,40).map(i=>i.text);
-      const recentlySkipped = loadRecentSuggestions();
+      const recentlySkipped = await loadRecentSuggestions();
       const combined = [...new Set([...savedList, ...recentlySkipped])].slice(0, 60);
       const existingList = combined.join(", ") || "none yet";
-      const userText = `Suggest a new expression for me — I'm not giving you one. Already collected or recently suggested (don't repeat any of these): ${existingList}. Pick one high-value item I don't have yet.`;
+      const userText = `Suggest a new expression for me — I'm not giving you one. Here is the full list of expressions I already have or that you've already suggested me recently: ${existingList}. You MUST NOT suggest any of these again, even rephrased — pick something genuinely different in wording, category, and topic. If you're tempted to reach for a very common default like "it's worth it" or "I'm not gonna lie", deliberately pick something else instead — go for a less obvious but still high-value pick.`;
       const result = await callClaudeJSON(GEN_SYSTEM, userText);
       const idx = Math.floor(Math.random() * result.examples.length);
       setCandidate(result); setExampleIdx(idx); setGuessText(""); setStage("guess");
-      pushRecentSuggestion(result.text);
+      await pushRecentSuggestion(result.text);
     } catch (e) { setError("Something went wrong: " + e.message); setStage("idle"); }
   }
   function reveal() { setStage("reveal"); }
