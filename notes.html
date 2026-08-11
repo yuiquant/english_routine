@@ -196,8 +196,32 @@ function useStorageItems() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await window.storage.get(STORAGE_KEY);
-        setItems(res.value ? JSON.parse(res.value) : []);
+        // Read the local copy directly (not through the generic shim) so we can merge
+        // it with whatever the cloud has, rather than letting either one silently
+        // clobber the other — e.g. if items were added while sync was broken, a naive
+        // "cloud always wins" load would quietly delete them.
+        let localArr = [];
+        try { localArr = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch (e) {}
+        let cloudArr = null;
+        try {
+          const res = await window.storage.get(STORAGE_KEY);
+          cloudArr = res.value ? JSON.parse(res.value) : [];
+        } catch (e) {
+          cloudArr = null; // offline or never synced — fall back to local only
+        }
+        let merged = localArr;
+        if (cloudArr !== null) {
+          const byId = new Map();
+          cloudArr.forEach(it => byId.set(it.id, it));
+          localArr.forEach(it => byId.set(it.id, it)); // local wins on id collisions
+          merged = [...byId.values()].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+        }
+        setItems(merged);
+        // Write the reconciled result back so both sides agree going forward.
+        if (merged.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          window.storage.set(STORAGE_KEY, JSON.stringify(merged)).catch(() => {});
+        }
       } catch (e) { setItems([]); }
       setReady(true);
     })();
