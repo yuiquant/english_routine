@@ -1,11 +1,11 @@
 // ---- Config ----
 // Set this to your Cloudflare Worker URL after you deploy the proxy (see DEPLOY.md).
-const WORKER_BASE_URL = "https://english-study-proxy.nimbosjung.workers.dev";
-const API_PROXY_URL = "https://english-study-proxy.nimbosjung.workers.dev/v1/messages";
+const WORKER_BASE_URL = "https://CHANGE-ME.workers.dev";
+const API_PROXY_URL = WORKER_BASE_URL + "/v1/messages";
 // Must match the SYNC_KEY secret you set on the Worker. Any string — just keeps
 // strangers from writing to your synced data if they guess your Worker URL.
 // (Obscurity, not real security — same caveat as everything else client-side here.)
-const SYNC_KEY = "test123";
+const SYNC_KEY = "CHANGE-ME-make-up-a-random-string";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
 // Caps how many reviews one sitting shows you. Anything past this just waits for
@@ -14,13 +14,20 @@ const ACTIVITY_KEY = "pfn-activity-log";
 const DAILY_REVIEW_CAP = 12;
 
 // ---- Date helpers ----
+// Use LOCAL calendar date, not UTC — toISOString() alone gives the UTC date, which can
+// be a full day off from the learner's actual "today" depending on timezone (e.g. NZ is
+// UTC+12/13), silently breaking due-date math.
+function localDateStr(d) {
+  const offsetMs = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offsetMs).toISOString().slice(0, 10);
+}
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return localDateStr(new Date());
 }
 function addDays(dateStr, n) {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
