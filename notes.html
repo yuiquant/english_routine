@@ -110,7 +110,31 @@ Real contexts from this learner's life to draw scenarios from: CrossFit every mo
 4-year-old; full-time nursing degree in NZ; volunteers weekly in the ED ("Friends of the Emergency
 Department"); cooks often incl. baking, rarely eats out; attends a Korean church on weekends; drinks drip
 coffee daily; into investing/quant trading as a hobby since quitting work to study; years at a foreign company
-with non-Korean colleagues; enjoys brain-survival shows (Physical:100, The Genius) when he has time.`;
+with non-Korean colleagues; enjoys brain-survival shows (Physical:100, The Genius) when he has time.
+
+WHAT THIS LEARNER ACTUALLY COLLECTS (derived from ~60 chunks he gathered on his own — match this taste
+closely, both when suggesting new items and when writing example sentences):
+- Heavily INTROSPECTIVE / self-reflective language — talking about his own inner states, second-guessing,
+  realizations, mental blanks. Real examples he saved: "I told myself that", "be (too) hard on myself",
+  "I thought nothing of it at first", "when I get the most stressed/overwhelmed", "when I look back",
+  "I'm blanking (on sth)", "I could've sworn". He is far more interested in describing what happens in his
+  head than in narrating external events.
+- SENTENCE FRAMES WITH SLOTS, not fixed sentences. He records them with slashes and parentheses because he
+  wants a reusable template: "Is it just me (or do you ever)", "As somebody who's been ~", "Not to sound
+  (like) ~, but", "I assumed / I thought / I figured", "Lately, I feel like I've been ~", "I don't know if
+  it's just me", "I feel like -ing", "plan on -ing", "do it so much that".
+- TIME, RETROSPECTION, AND DURATION as a recurring theme: "all this time", "not long ago", "back then / at
+  that time", "back in those days", "by the time", "day after day / week after week", "for the time being".
+- HEDGING AND SOFTENING: "on the fence", "iffy about", "low-key", "might as well", "I guess I should",
+  "be likely to", "matter of fact".
+- Everyday phrasal verbs and light-verb collocations with an everyday-life flavour: keep up with, pull off,
+  push through, trip me up, go back and forth, get turned down, go for, be off, go about your business,
+  get a sense of, take time out of, benefit from, have control over, on my plate, on the spot, on a whim.
+- Register is ADULT CONVERSATIONAL, not youth slang — "low-key" is about as slangy as he goes. No memes, no
+  trendy internet slang, no business jargon.
+When suggesting a new item, aim squarely at this taste profile. When writing examples, favour situations
+where he is reflecting, hedging, recalling, or working something out internally, since that's the kind of
+talk he actually wants to be fluent in.`;
 
 const GEN_SYSTEM = `You are an English-speaking coach helping the learner below move from translating-in-their-head to
 producing natural, idiomatic English fluently.
@@ -133,8 +157,11 @@ Output ONLY valid JSON, no markdown fences, no commentary:
     { ... }
   ]
 }
-Produce however many examples earn their place — usually 2, sometimes 1, occasionally 3. Never pad to hit a
-count. Draw each from a DIFFERENT one of the learner's real contexts, only where this expression would
+Produce 3 examples where the expression genuinely fits 3 different situations, and 4 when it's versatile
+enough to earn a fourth — these get rotated through on later reviews, so having several genuinely distinct
+ones is valuable. Still never pad: if an expression only honestly works in 2 situations, give 2 rather than
+inventing a contrived third.
+Draw each from a DIFFERENT one of the learner's real contexts, only where this expression would
 plausibly come up. Beyond just using different context labels, make the examples genuinely FEEL different
 from each other: vary the emotional tone (frustrated vs amused vs matter-of-fact), the shape (a narrated
 situation vs a snippet of back-and-forth dialogue), who's being addressed (a stranger, his wife, a close
@@ -557,7 +584,12 @@ function ReviewView({ items, persist }) {
     const id = list[0]; const rest = list.slice(1);
     const item = updatedItems.find(i => i.id === id);
     if (!item) { pickFromUpdated(rest, updatedItems); return; }
-    const idx = Math.floor(Math.random() * item.examples.length);
+    // Rotate through the stored examples instead of picking at random, so consecutive
+    // reviews of the same expression don't rehearse the same situation. No API cost.
+    const lastIdx = typeof item.srs.lastExampleIdx === "number" ? item.srs.lastExampleIdx : -1;
+    const idx = item.examples.length > 1
+      ? (lastIdx + 1) % item.examples.length
+      : 0;
     setCurrent(item); setExampleIdx(idx); setQueue(rest);
     setStage("prompt"); setTranscript(""); setFeedback(null); setError(""); setLeechPrompt(false);
   }
@@ -600,7 +632,7 @@ function ReviewView({ items, persist }) {
   }
 
   function rate(rating) {
-    const updatedSrs = nextSRS(current.srs, rating);
+    const updatedSrs = { ...nextSRS(current.srs, rating), lastExampleIdx: exampleIdx };
     const updatedItems = items.map(it => it.id === current.id ? { ...it, srs: updatedSrs } : it);
     persist(updatedItems);
     markActivity("notes");
