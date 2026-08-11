@@ -165,23 +165,51 @@ function isDueToday(item) {
 
 // ---- Proxy-backed Claude API caller ----
 async function callClaudeJSON(systemPrompt, content) {
-  const res = await fetch(API_PROXY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1200,
-      system: systemPrompt,
-      messages: [{ role: "user", content }],
-    }),
-  });
-  if (!res.ok) throw new Error("API request failed (" + res.status + ")");
+  let res;
+  try {
+    res = await fetch(API_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 3000,
+        system: systemPrompt,
+        messages: [{ role: "user", content }],
+      }),
+    });
+  } catch (e) {
+    // Network-level failure (Safari says "Load failed", Chrome "Failed to fetch") —
+    // the request never got a response at all: offline, proxy down, or CORS blocked.
+    console.error("[api] network-level fetch failure", e);
+    throw new Error("Couldn't reach the API proxy — check your connection, then try again.");
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.error("[api] HTTP error", res.status, body);
+    if (res.status === 401 || res.status === 403) throw new Error("API key rejected (" + res.status + ") — check the ANTHROPIC_API_KEY secret on the Worker.");
+    if (res.status === 429) throw new Error("Rate limited (429) — wait a moment and try again.");
+    if (res.status >= 500) throw new Error("The API had a server error (" + res.status + ") — usually temporary, try again shortly.");
+    throw new Error("API request failed (" + res.status + ")");
+  }
   const data = await res.json();
+  if (data.error) {
+    console.error("[api] API returned an error object", data.error);
+    throw new Error(data.error.message || "The API returned an error.");
+  }
   const textBlock = (data.content || []).find((b) => b.type === "text");
   if (!textBlock) throw new Error("No text in response");
+  if (data.stop_reason === "max_tokens") {
+    console.error("[api] response was cut off at max_tokens", data);
+    throw new Error("The response got cut off before it finished — try again.");
+  }
   let raw = textBlock.text.trim();
   raw = raw.replace(/^```json/i, "").replace(/^```/, "").replace(/```$/, "").trim();
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("[api] couldn't parse response as JSON:", raw);
+    throw new Error("Got a malformed response — try again.");
+  }
 }
 
 // ---- Speech recognition error messages ----
