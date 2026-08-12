@@ -1,11 +1,9 @@
 // ---- Config ----
-// Set this to your Cloudflare Worker URL after you deploy the proxy (see DEPLOY.md).
-const WORKER_BASE_URL = "https://CHANGE-ME.workers.dev";
+// Already filled in for this deployment.
+const WORKER_BASE_URL = "https://english-study-proxy.nimbosjung.workers.dev";
 const API_PROXY_URL = WORKER_BASE_URL + "/v1/messages";
-// Must match the SYNC_KEY secret you set on the Worker. Any string — just keeps
-// strangers from writing to your synced data if they guess your Worker URL.
-// (Obscurity, not real security — same caveat as everything else client-side here.)
-const SYNC_KEY = "CHANGE-ME-make-up-a-random-string";
+// Must match the SYNC_KEY secret set on the Worker.
+const SYNC_KEY = "test123";
 const MODEL = "claude-sonnet-4-6";
 const ACTIVITY_KEY = "pfn-activity-log";
 // Caps how many reviews one sitting shows you. Anything past this just waits for
