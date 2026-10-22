@@ -204,13 +204,36 @@
         if (res.ok && j.segments && j.segments.length) data = j;
       } catch (e) { /* fall through */ }
 
-      // 2) Gemini transcribes the video itself.
+      // 2) Gemini transcribes the video itself. This runs as a background job and we
+      //    poll it — transcription takes minutes, well past any single-request timeout.
       if (!data) {
-        setStatus("YouTube captions unavailable — asking Gemini to transcribe (this takes a minute)...");
-        const res2 = await fetch(`${WORKER_BASE_URL}/transcript-ai?v=${vid}`);
-        const j2 = await res2.json();
-        if (!res2.ok) { setErr(j2.error || "Couldn't get a transcript."); setStatus(""); return; }
-        data = j2;
+        setStatus("YouTube captions unavailable — asking Gemini to transcribe...");
+        const startRes = await fetch(`${WORKER_BASE_URL}/transcript-ai/start?v=${vid}`);
+        const startJson = await startRes.json();
+        if (!startRes.ok || !startJson.jobId) {
+          setErr(startJson.error || "Couldn't start transcription."); setStatus(""); return;
+        }
+        const began = Date.now();
+        const MAX_WAIT_MS = 15 * 60 * 1000;
+        while (true) {
+          await new Promise(r => setTimeout(r, 5000));
+          const mins = Math.floor((Date.now() - began) / 60000);
+          const secs = Math.floor(((Date.now() - began) % 60000) / 1000);
+          setStatus(`Gemini is transcribing the video... (${mins}m ${secs}s elapsed — long videos take a while)`);
+          let pj;
+          try {
+            const pRes = await fetch(`${WORKER_BASE_URL}/transcript-ai/poll?id=${encodeURIComponent(startJson.jobId)}`);
+            pj = await pRes.json();
+            if (!pRes.ok) { setErr(pj.error || "Transcription failed."); setStatus(""); return; }
+          } catch (e) {
+            continue; // transient network blip — keep polling
+          }
+          if (pj.status === "completed") { data = pj; break; }
+          if (Date.now() - began > MAX_WAIT_MS) {
+            setErr("Transcription is taking unusually long — try a shorter video, or paste the transcript yourself.");
+            setStatus(""); return;
+          }
+        }
       }
       segments = data.segments;
       currentVideoId = vid;
