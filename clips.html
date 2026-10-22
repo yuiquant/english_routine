@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>English Study — Clips</title>
+<script>document.write('<link rel="stylesheet" href="shared.css?t=' + Date.now() + '">');</script>
+<style>
+  .wrap { max-width: 820px; }
+  .library-row { display:flex; gap:8px; align-items:center; margin-top: 12px; flex-wrap: wrap; }
+  .library-row select { flex: 1 1 200px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: var(--card); font-size: 13px; }
+  #player-wrap { position: relative; width: 100%; max-width: 520px; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; margin-top: 14px; }
+  #player { width: 100%; height: 100%; }
+  .line-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-top: 16px; }
+  .ctx { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .ctx.before { margin-bottom: 8px; }
+  .ctx.after { margin-top: 8px; }
+  .main-line { font-size: 18px; font-weight: 700; line-height: 1.5; color: var(--ink); }
+  .ts { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+  .expr { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--teal-dark); }
+  .meaning { font-size: 14px; margin-top: 4px; }
+  .nuance { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .youglish { display:inline-flex; gap:4px; font-size: 11.5px; color: var(--teal-dark); text-decoration: none; margin-top: 4px; }
+  .examples { margin-top: 12px; display:flex; flex-direction: column; gap: 10px; }
+  .example { border-left: 2px solid var(--line); padding-left: 10px; }
+  .badge { display:inline-flex; align-items:center; gap:4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--teal-dark); background: rgba(31,111,107,0.08); border-radius: 4px; padding: 2px 6px; }
+  .scenario { font-size: 13px; margin-top: 4px; }
+  .intent-hint { font-size: 12px; color: var(--amber); margin-top: 3px; font-style: italic; }
+  .target { font-size: 14px; font-weight: 600; margin-top: 3px; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .btn-row { display:flex; gap:10px; flex-wrap: wrap; margin-top: 14px; }
+  .stat-chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 3px 8px; color: var(--muted); margin-right:6px; }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="topnav-inner">
+    <div class="brand">English Study</div>
+    <div class="tabs">
+      <a href="index.html">Home</a>
+      <a href="notes.html">Notes</a>
+      <a href="shadowing.html">Shadowing</a>
+      <a href="speaking.html">Speaking</a>
+      <a href="clips.html" class="active">Clips</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="eyebrow">Clips</div>
+  <h2>Mine a video for expressions</h2>
+  <p class="sub">Load a YouTube clip, then pull a random line out of it. Keep the ones worth learning — they go straight into your review deck.</p>
+
+  <div class="library-row">
+    <select id="clipSelect"><option value="">— saved clips —</option></select>
+    <button class="btn ghost" id="loadClipBtn">Load</button>
+    <button class="btn ghost" id="deleteClipBtn">Delete</button>
+  </div>
+
+  <label class="field-label">YouTube URL</label>
+  <input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
+  <div class="btn-row">
+    <button class="btn primary" id="fetchBtn">Load clip &amp; transcript</button>
+    <button class="btn ghost" id="manualBtn">Paste transcript myself</button>
+  </div>
+  <div id="err" class="error-box"></div>
+  <div id="status" class="sub" style="margin-top:8px"></div>
+
+  <div id="manualBox" style="display:none; margin-top:12px;">
+    <label class="field-label">Paste the transcript (one line per caption, or just paragraphs — either works)</label>
+    <textarea id="manualText" style="min-height:140px" placeholder="Paste from YouTube's &quot;Show transcript&quot; panel..."></textarea>
+    <div class="btn-row">
+      <button class="btn primary" id="useManualBtn">Use this transcript</button>
+    </div>
+  </div>
+
+  <div id="playerBox" style="display:none">
+    <div id="player-wrap"><div id="player"></div></div>
+  </div>
+
+  <div id="lineBox" style="display:none">
+    <div class="line-card">
+      <div class="ts" id="ts"></div>
+      <div class="ctx before" id="ctxBefore"></div>
+      <div class="main-line" id="mainLine"></div>
+      <div class="ctx after" id="ctxAfter"></div>
+      <div class="btn-row">
+        <button class="btn ghost" id="playHereBtn">▶ Play this moment</button>
+        <button class="btn primary" id="analyzeBtn">✨ What's worth learning here?</button>
+        <button class="btn ghost" id="nextLineBtn">⇢ Another line</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultBox"></div>
+</div>
+
+<script>document.write('<script src="shared.js?t=' + Date.now() + '"><\/script>');</script>
+<script>
+  const CLIP_LIB_KEY = "clips-library";
+  const EXPR_KEY = "expressions";
+
+  let segments = [];
+  let currentIdx = -1;
+  let currentVideoId = null;
+  let player = null;
+
+  const errEl = document.getElementById('err');
+  const statusEl = document.getElementById('status');
+  function setErr(m){ errEl.textContent = m || ""; }
+  function setStatus(m){ statusEl.textContent = m || ""; }
+
+  function extractVideoId(u) {
+    const m = u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+  function fmtTime(sec) {
+    const s = Math.floor(sec);
+    return String(Math.floor(s/60)).padStart(2,'0') + ":" + String(s%60).padStart(2,'0');
+  }
+
+  // ---- YouTube player ----
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(tag);
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', { height:'100%', width:'100%' });
+  };
+
+  // ---- Clip library ----
+  async function loadLib() {
+    try { const r = await window.storage.get(CLIP_LIB_KEY); return JSON.parse(r.value) || []; }
+    catch(e){ return []; }
+  }
+  async function saveLib(list) { await window.storage.set(CLIP_LIB_KEY, JSON.stringify(list)); }
+  async function refreshClipSelect() {
+    const sel = document.getElementById('clipSelect');
+    const list = await loadLib();
+    sel.innerHTML = '<option value="">— saved clips —</option>' +
+      list.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+  }
+  refreshClipSelect();
+
+  document.getElementById('loadClipBtn').onclick = async function () {
+    const id = document.getElementById('clipSelect').value;
+    if (!id) return;
+    const list = await loadLib();
+    const clip = list.find(c => c.id === id);
+    if (!clip) return;
+    segments = clip.segments;
+    currentVideoId = clip.videoId;
+    document.getElementById('ytUrl').value = "https://www.youtube.com/watch?v=" + clip.videoId;
+    showPlayer(clip.videoId);
+    setStatus(`Loaded "${clip.title}" — ${segments.length} lines.`);
+    setErr("");
+    pickRandomLine();
+  };
+  document.getElementById('deleteClipBtn').onclick = async function () {
+    const id = document.getElementById('clipSelect').value;
+    if (!id) return;
+    if (!confirm("Delete this saved clip?")) return;
+    await saveLib((await loadLib()).filter(c => c.id !== id));
+    await refreshClipSelect();
+  };
+
+  function showPlayer(videoId) {
+    document.getElementById('playerBox').style.display = 'block';
+    if (player && player.cueVideoById) player.cueVideoById(videoId);
+  }
+
+  // ---- Fetch transcript via the Worker ----
+  document.getElementById('fetchBtn').onclick = async function () {
+    setErr(""); setStatus("");
+    const vid = extractVideoId(document.getElementById('ytUrl').value.trim());
+    if (!vid) { setErr("That doesn't look like a valid YouTube URL."); return; }
+    setStatus("Fetching transcript...");
+    try {
+      const res = await fetch(`${WORKER_BASE_URL}/transcript?v=${vid}`);
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error || "Couldn't fetch the transcript."); setStatus(""); return; }
+      segments = data.segments;
+      currentVideoId = vid;
+      showPlayer(vid);
+      setStatus(`Got ${segments.length} lines${data.autoGenerated ? " (auto-generated captions)" : ""}.`);
+
+      // Save to the clip library so it can be reloaded later without re-fetching.
+      const title = prompt("Name this clip (for your saved list):", "Clip " + new Date().toLocaleDateString());
+      if (title) {
+        const list = await loadLib();
+        list.unshift({ id: uid(), title, videoId: vid, segments });
+        await saveLib(list);
+        await refreshClipSelect();
+      }
+      pickRandomLine();
+    } catch (e) {
+      setErr("Couldn't reach the transcript service: " + e.message);
+      setStatus("");
+    }
+  };
+
+  // ---- Manual transcript fallback (if YouTube blocks the auto-fetch) ----
+  document.getElementById('manualBtn').onclick = function () {
+    const b = document.getElementById('manualBox');
+    b.style.display = b.style.display === 'none' ? 'block' : 'none';
+  };
+  document.getElementById('useManualBtn').onclick = async function () {
+    const raw = document.getElementById('manualText').value.trim();
+    if (!raw) { setErr("Paste some transcript text first."); return; }
+    setErr("");
+    // Accept either "0:12 some text" lines or plain prose; split into sentence-ish chunks.
+    const lines = raw.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    let parsed = [];
+    for (const line of lines) {
+      const m = line.match(/^(\d+):(\d+)(?::(\d+))?\s+(.*)$/);
+      if (m) {
+        const start = m[3] ? (+m[1])*3600 + (+m[2])*60 + (+m[3]) : (+m[1])*60 + (+m[2]);
+        parsed.push({ start, dur: 0, text: m[4] });
+      } else {
+        // Plain prose — break into sentences so lines aren't enormous.
+        line.split(/(?<=[.!?])\s+/).filter(Boolean).forEach(t => parsed.push({ start: 0, dur: 0, text: t.trim() }));
+      }
+    }
+    if (!parsed.length) { setErr("Couldn't make sense of that transcript."); return; }
+    segments = parsed;
+    const vid = extractVideoId(document.getElementById('ytUrl').value.trim());
+    if (vid) { currentVideoId = vid; showPlayer(vid); }
+    setStatus(`Using your pasted transcript — ${segments.length} lines.`);
+
+    const title = prompt("Name this clip (for your saved list):", "Clip " + new Date().toLocaleDateString());
+    if (title) {
+      const list = await loadLib();
+      list.unshift({ id: uid(), title, videoId: vid || "", segments });
+      await saveLib(list);
+      await refreshClipSelect();
+    }
+    pickRandomLine();
+  };
+
+  // ---- Random line picking ----
+  function pickRandomLine() {
+    if (!segments.length) return;
+    document.getElementById('resultBox').innerHTML = "";
+    // Prefer lines with some substance (not just "yeah" / "okay").
+    const candidates = segments
+      .map((s, i) => ({ s, i }))
+      .filter(x => x.s.text.split(/\s+/).length >= 4);
+    const pool = candidates.length ? candidates : segments.map((s,i)=>({s,i}));
+    const pickIdx = pool[Math.floor(Math.random()*pool.length)].i;
+    currentIdx = pickIdx;
+
+    const before = segments.slice(Math.max(0,pickIdx-2), pickIdx).map(s=>s.text).join(" ");
+    const after = segments.slice(pickIdx+1, pickIdx+3).map(s=>s.text).join(" ");
+
+    document.getElementById('ts').textContent = fmtTime(segments[pickIdx].start);
+    document.getElementById('ctxBefore').textContent = before ? "… " + before : "";
+    document.getElementById('mainLine').textContent = segments[pickIdx].text;
+    document.getElementById('ctxAfter').textContent = after ? after + " …" : "";
+    document.getElementById('lineBox').style.display = 'block';
+  }
+  document.getElementById('nextLineBtn').onclick = pickRandomLine;
+
+  document.getElementById('playHereBtn').onclick = function () {
+    if (!player || currentIdx < 0) return;
+    player.seekTo(Math.max(0, segments[currentIdx].start - 1), true);
+    player.playVideo();
+  };
+
+  // ---- Analyze the line, then let him add it to the deck ----
+  const CLIP_SYSTEM = `You help a Korean learner of English mine real spoken lines from videos for expressions worth learning.
+
+The learner: Korean adult, ~10 years in Korean finance then ~6 years at a foreign company (2 years working
+entirely in English). Upper-intermediate to advanced (B2-C1). His problem isn't vocabulary breadth — it's
+composing in Korean and translating, which makes him hesitant and overly literal. Now a full-time nursing
+student in New Zealand, lives with his wife and 4-year-old, does CrossFit every morning, volunteers weekly
+in the ED, cooks a lot, goes to a Korean church, drinks drip coffee daily, into quant/systematic trading as
+a hobby, enjoys brain-survival shows.
+
+He most wants EVERYDAY PHRASAL VERBS, LIGHT-VERB COLLOCATIONS, and CASUAL IDIOMS — the concrete, physical,
+doing-things language of ordinary conversation. He already has plenty of introspective "inner monologue"
+frames, so don't reach for those unless the line genuinely offers nothing else.
+
+You'll be given a line of real dialogue plus surrounding context. Identify the ONE thing in it most worth
+learning. If the line is genuinely bland (pure filler, a proper noun, nothing idiomatic), say so honestly.
+
+Output ONLY valid JSON, no markdown fences, no commentary:
+{
+  "worth_learning": true or false,
+  "skip_reason": "if worth_learning is false, one short sentence saying why this line isn't worth saving; otherwise empty string",
+  "text": "the target expression, cleaned up into its reusable form (e.g. 'wrap your head around', not the whole sentence)",
+  "meaning_en": "one-line plain-English definition",
+  "register": "formal | neutral | casual",
+  "nuance_note": "1-2 sentences on when/why natives reach for this over a literal phrasing. Where useful, name the flat direct-translation a Korean speaker might default to and contrast it.",
+  "examples": [
+    {"context_label": "one of: CrossFit | Family (wife & 4yo) | Nursing class / clinical | ED volunteering | Cooking & groceries | Korean church | Coffee routine / small talk | Investing & quant trading | Ex-corporate / expat colleagues | Weekend survival shows", "scenario_en": "a short situational set-up OR a snippet of dialogue. Do NOT include the target expression or the answer here.", "intent_hint": "short phrase naming the communicative intent to aim for, without giving away the wording", "target_en": "a natural, short line using the expression, the way a real person would actually say it out loud", "note_en": "very short tone/usage tip"},
+    { ... }
+  ]
+}
+Give 3 examples (4 if the expression is versatile), each from a DIFFERENT context above, and only contexts
+where it would plausibly come up. Keep sentences SHORT — one clause, or at most one simple subordinate
+clause. Sound like someone actually talking: contractions, natural rhythm, the odd filler. Vary the
+emotional tone and shape across the examples.`;
+
+  document.getElementById('analyzeBtn').onclick = async function () {
+    if (currentIdx < 0) return;
+    const box = document.getElementById('resultBox');
+    box.innerHTML = '<p class="sub" style="margin-top:14px">Looking at that line…</p>';
+    const before = segments.slice(Math.max(0,currentIdx-2), currentIdx).map(s=>s.text).join(" ");
+    const after = segments.slice(currentIdx+1, currentIdx+3).map(s=>s.text).join(" ");
+    const userText = `Context before: ${before || "(start of clip)"}\nTHE LINE: ${segments[currentIdx].text}\nContext after: ${after || "(end of clip)"}`;
+    try {
+      const r = await callClaudeJSON(CLIP_SYSTEM, userText);
+      renderResult(r);
+    } catch (e) {
+      box.innerHTML = `<div class="error-box">${e.message}</div>`;
+    }
+  };
+
+  function renderResult(r) {
+    const box = document.getElementById('resultBox');
+    if (!r.worth_learning) {
+      box.innerHTML = `<div class="line-card"><p class="sub">${r.skip_reason || "Not much worth saving in that line."}</p>
+        <button class="btn primary" onclick="document.getElementById('nextLineBtn').click()">⇢ Try another line</button></div>`;
+      return;
+    }
+    const yg = `https://youglish.com/pronounce/${encodeURIComponent(r.text)}/english`;
+    box.innerHTML = `
+      <div class="line-card">
+        <div class="expr">${r.text}</div>
+        <a class="youglish" href="${yg}" target="_blank" rel="noopener noreferrer">🔊 Hear it on YouGlish</a>
+        <div class="meaning">${r.meaning_en} · <span style="font-size:11px;color:var(--muted)">${r.register}</span></div>
+        <div class="nuance">${r.nuance_note}</div>
+        <div class="examples">
+          ${r.examples.map(e => `
+            <div class="example">
+              <span class="badge">${e.context_label}</span>
+              <div class="scenario">${e.scenario_en}</div>
+              ${e.intent_hint ? `<div class="intent-hint">${e.intent_hint}</div>` : ""}
+              <div class="target">${e.target_en}</div>
+              <div class="note">${e.note_en}</div>
+            </div>`).join("")}
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="addDeckBtn">✓ Add to my deck</button>
+          <button class="btn ghost" onclick="document.getElementById('nextLineBtn').click()">Skip — another line</button>
+        </div>
+        <div id="addMsg" class="sub" style="margin-top:8px"></div>
+      </div>`;
+    document.getElementById('addDeckBtn').onclick = () => addToDeck(r);
+  }
+
+  async function addToDeck(r) {
+    const btn = document.getElementById('addDeckBtn');
+    const msg = document.getElementById('addMsg');
+    btn.disabled = true; btn.textContent = "Saving...";
+    try {
+      let items = [];
+      try { const res = await window.storage.get(EXPR_KEY); items = JSON.parse(res.value) || []; } catch(e) {}
+      if (items.some(i => (i.text||"").trim().toLowerCase() === r.text.trim().toLowerCase())) {
+        msg.textContent = "Already in your deck — skipped the duplicate.";
+        btn.textContent = "Already saved";
+        return;
+      }
+      const newItem = {
+        id: uid(),
+        text: r.text,
+        meaning_en: r.meaning_en,
+        register: r.register,
+        nuance_note: r.nuance_note,
+        examples: r.examples,
+        sourceType: "clip",
+        sourceNote: currentVideoId ? "From a video clip" : "",
+        createdAt: todayStr(),
+        srs: { interval: 1, ease: 2.5, reps: 0, consecutiveAgain: 0, leech: false, graduated: false, dueDate: addDays(todayStr(),1), lastReviewed: null },
+      };
+      await window.storage.set(EXPR_KEY, JSON.stringify([newItem, ...items]));
+      markActivity("notes");
+      msg.textContent = "Added — it'll come up in Review from tomorrow.";
+      btn.textContent = "✓ Added";
+    } catch (e) {
+      msg.textContent = "Couldn't save: " + e.message;
+      btn.disabled = false; btn.textContent = "✓ Add to my deck";
+    }
+  }
+</script>
+</body>
+</html>
